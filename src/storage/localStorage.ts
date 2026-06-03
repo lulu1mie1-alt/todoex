@@ -1,0 +1,189 @@
+import type { AppSettings } from "../types/settings";
+import type { CheckinRecord, Video } from "../types/video";
+import {
+  BODY_PART_OPTIONS,
+  EQUIPMENT_OPTIONS,
+  INTENSITY_OPTIONS,
+  SPECIAL_TAG_OPTIONS,
+  TRAINING_TYPE_OPTIONS,
+} from "../utils/tagOptions";
+
+const VIDEO_STORAGE_KEY = "fitnessIsland.videos";
+const CHECKIN_STORAGE_KEY = "fitnessIsland.checkinRecords";
+const SETTINGS_STORAGE_KEY = "fitnessIsland.settings";
+const CUSTOM_TAG_OPTIONS_KEY = "fitnessIsland.customTagOptions";
+
+export type CustomTagGroup = "bodyPart" | "intensity" | "equipment" | "trainingType" | "specialTags";
+
+export interface CustomTagOptions {
+  bodyPart: string[];
+  intensity: string[];
+  equipment: string[];
+  trainingType: string[];
+  specialTags: string[];
+}
+
+interface StoredTagOptions {
+  bodyPart: string[];
+  intensity: string[];
+  equipment: string[];
+  trainingType: string[];
+  specialTags: string[] | null;
+}
+
+const defaultSettings: AppSettings = {
+  userName: "",
+  defaultMood: "",
+  reminderEnabled: false,
+};
+
+const defaultStoredTagOptions: StoredTagOptions = {
+  bodyPart: [],
+  intensity: [],
+  equipment: [],
+  trainingType: [],
+  specialTags: null,
+};
+
+export function readStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function writeStorage<T>(key: string, value: T) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function readArrayStorage<T>(key: string): T[] {
+  const value = readStorage<unknown>(key, []);
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function normalizeTextOptions(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function mergeOptions(baseOptions: readonly string[], customOptions: string[]) {
+  return Array.from(new Set([...baseOptions, ...customOptions]));
+}
+
+function getStoredTagOptions(): StoredTagOptions {
+  const stored = readStorage<Partial<StoredTagOptions>>(CUSTOM_TAG_OPTIONS_KEY, defaultStoredTagOptions);
+  return {
+    bodyPart: normalizeTextOptions(stored.bodyPart),
+    intensity: normalizeTextOptions(stored.intensity),
+    equipment: normalizeTextOptions(stored.equipment),
+    trainingType: normalizeTextOptions(stored.trainingType),
+    specialTags: Array.isArray(stored.specialTags) ? normalizeTextOptions(stored.specialTags) : null,
+  };
+}
+
+function saveStoredTagOptions(options: StoredTagOptions) {
+  writeStorage(CUSTOM_TAG_OPTIONS_KEY, options);
+}
+
+export function getVideos(): Video[] {
+  return readArrayStorage<Video>(VIDEO_STORAGE_KEY);
+}
+
+export function saveVideos(videos: Video[]) {
+  writeStorage(VIDEO_STORAGE_KEY, videos);
+}
+
+export function addVideo(video: Video) {
+  const videos = getVideos();
+  saveVideos([video, ...videos]);
+}
+
+export function updateVideo(videoId: string, updates: Partial<Video>) {
+  const videos = getVideos();
+  saveVideos(videos.map((video) => (video.id === videoId ? { ...video, ...updates, id: video.id } : video)));
+}
+
+export function deleteVideo(videoId: string) {
+  const videos = getVideos();
+  saveVideos(videos.filter((video) => video.id !== videoId));
+}
+
+export function getCheckinRecords(): CheckinRecord[] {
+  return readArrayStorage<CheckinRecord>(CHECKIN_STORAGE_KEY);
+}
+
+export function saveCheckinRecords(records: CheckinRecord[]) {
+  writeStorage(CHECKIN_STORAGE_KEY, records);
+}
+
+export function addCheckinRecord(record: CheckinRecord) {
+  const records = getCheckinRecords();
+  saveCheckinRecords([record, ...records]);
+}
+
+export function getSettings(): AppSettings {
+  return readStorage<AppSettings>(SETTINGS_STORAGE_KEY, defaultSettings);
+}
+
+export function saveSettings(settings: AppSettings) {
+  writeStorage(SETTINGS_STORAGE_KEY, settings);
+}
+
+export function getTagOptions(): CustomTagOptions {
+  const stored = getStoredTagOptions();
+
+  return {
+    bodyPart: mergeOptions(BODY_PART_OPTIONS, stored.bodyPart),
+    intensity: mergeOptions(INTENSITY_OPTIONS, stored.intensity),
+    equipment: mergeOptions(EQUIPMENT_OPTIONS, stored.equipment),
+    trainingType: mergeOptions(TRAINING_TYPE_OPTIONS, stored.trainingType),
+    specialTags: stored.specialTags ?? [...SPECIAL_TAG_OPTIONS],
+  };
+}
+
+export function addTagOption(group: CustomTagGroup, value: string) {
+  const nextValue = value.trim();
+  if (!nextValue) return;
+
+  const stored = getStoredTagOptions();
+  const currentOptions = group === "specialTags" ? stored.specialTags ?? [...SPECIAL_TAG_OPTIONS] : stored[group];
+
+  if (currentOptions.includes(nextValue)) return;
+
+  saveStoredTagOptions({
+    ...stored,
+    [group]: [...currentOptions, nextValue],
+  });
+}
+
+export function deleteTagOption(group: CustomTagGroup, value: string) {
+  const stored = getStoredTagOptions();
+
+  if (group === "specialTags") {
+    const currentOptions = stored.specialTags ?? [...SPECIAL_TAG_OPTIONS];
+    saveStoredTagOptions({
+      ...stored,
+      specialTags: currentOptions.filter((item) => item !== value),
+    });
+    return;
+  }
+
+  saveStoredTagOptions({
+    ...stored,
+    [group]: stored[group].filter((item) => item !== value),
+  });
+}
+
+export function isDeletableTagOption(group: CustomTagGroup, value: string): boolean {
+  if (group === "specialTags") return true;
+  return getStoredTagOptions()[group].includes(value);
+}
+
+export function clearAllData() {
+  localStorage.removeItem(VIDEO_STORAGE_KEY);
+  localStorage.removeItem(CHECKIN_STORAGE_KEY);
+  localStorage.removeItem(SETTINGS_STORAGE_KEY);
+  localStorage.removeItem(CUSTOM_TAG_OPTIONS_KEY);
+}
