@@ -1,5 +1,5 @@
 import type { AppSettings } from "../types/settings";
-import type { CheckinRecord, Video } from "../types/video";
+import type { CheckinRecord, DailyPlan, PlanItem, Video } from "../types/video";
 import {
   BODY_PART_OPTIONS,
   EQUIPMENT_OPTIONS,
@@ -12,6 +12,7 @@ const VIDEO_STORAGE_KEY = "fitnessIsland.videos";
 const CHECKIN_STORAGE_KEY = "fitnessIsland.checkinRecords";
 const SETTINGS_STORAGE_KEY = "fitnessIsland.settings";
 const CUSTOM_TAG_OPTIONS_KEY = "fitnessIsland.customTagOptions";
+const PLANS_STORAGE_KEY = "fitnessIsland.plans";
 
 export type CustomTagGroup = "bodyPart" | "intensity" | "equipment" | "trainingType" | "specialTags";
 
@@ -123,6 +124,87 @@ export function addCheckinRecord(record: CheckinRecord) {
   saveCheckinRecords([record, ...records]);
 }
 
+export function getAllPlans(): DailyPlan[] {
+  return readArrayStorage<DailyPlan>(PLANS_STORAGE_KEY);
+}
+
+export function saveAllPlans(plans: DailyPlan[]) {
+  writeStorage(PLANS_STORAGE_KEY, plans);
+}
+
+export function getPlanByDate(date: string): DailyPlan {
+  const plans = getAllPlans();
+  return plans.find((plan) => plan.date === date) ?? { date, items: [] };
+}
+
+function createPlanItem(videoId: string): PlanItem {
+  return {
+    id: `plan-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    videoId,
+    addedAt: new Date().toISOString(),
+    completed: false,
+    completedAt: null,
+  };
+}
+
+export function addVideoToPlan(date: string, videoId: string) {
+  const plans = getAllPlans();
+  const existingPlan = plans.find((plan) => plan.date === date);
+
+  if (existingPlan) {
+    if (existingPlan.items.some((item) => item.videoId === videoId)) return;
+    saveAllPlans(
+      plans.map((plan) =>
+        plan.date === date ? { ...plan, items: [...plan.items, createPlanItem(videoId)] } : plan,
+      ),
+    );
+    return;
+  }
+
+  saveAllPlans([...plans, { date, items: [createPlanItem(videoId)] }]);
+}
+
+export function removeVideoFromPlan(date: string, videoId: string) {
+  const plans = getAllPlans();
+  saveAllPlans(
+    plans
+      .map((plan) =>
+        plan.date === date ? { ...plan, items: plan.items.filter((item) => item.videoId !== videoId) } : plan,
+      )
+      .filter((plan) => plan.items.length > 0),
+  );
+}
+
+export function togglePlanItemCompleted(date: string, videoId: string) {
+  const plans = getAllPlans();
+  saveAllPlans(
+    plans.map((plan) => {
+      if (plan.date !== date) return plan;
+      return {
+        ...plan,
+        items: plan.items.map((item) => {
+          if (item.videoId !== videoId) return item;
+          const completed = !item.completed;
+          return {
+            ...item,
+            completed,
+            completedAt: completed ? new Date().toISOString() : null,
+          };
+        }),
+      };
+    }),
+  );
+}
+
+export function isVideoInPlan(date: string, videoId: string): boolean {
+  return getPlanByDate(date).items.some((item) => item.videoId === videoId);
+}
+
+export function clearPlanByDate(date: string) {
+  const plans = getAllPlans();
+  saveAllPlans(plans.filter((plan) => plan.date !== date));
+}
+
 export function getSettings(): AppSettings {
   return readStorage<AppSettings>(SETTINGS_STORAGE_KEY, defaultSettings);
 }
@@ -186,4 +268,5 @@ export function clearAllData() {
   localStorage.removeItem(CHECKIN_STORAGE_KEY);
   localStorage.removeItem(SETTINGS_STORAGE_KEY);
   localStorage.removeItem(CUSTOM_TAG_OPTIONS_KEY);
+  localStorage.removeItem(PLANS_STORAGE_KEY);
 }

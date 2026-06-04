@@ -72,7 +72,13 @@ function App() {
       </header>
 
       <main className="page-body">
-        {activePage === "today" && <TodayPage videos={videos} />}
+        {activePage === "today" && (
+          <TodayPage
+            videos={savedVideos}
+            onVideosChanged={refreshSavedVideos}
+            onGoImport={() => setActivePage("import")}
+          />
+        )}
         {activePage === "library" && <LibraryPage videos={savedVideos} onVideosChanged={refreshSavedVideos} />}
         {activePage === "import" && (
           <ImportPage

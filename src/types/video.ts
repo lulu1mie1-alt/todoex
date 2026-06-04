@@ -36,3 +36,16 @@ export interface CheckinRecord {
   mood: string;
   note: string;
 }
+
+export interface PlanItem {
+  id: string;
+  videoId: string;
+  addedAt: string;
+  completed: boolean;
+  completedAt: string | null;
+}
+
+export interface DailyPlan {
+  date: string;
+  items: PlanItem[];
+}

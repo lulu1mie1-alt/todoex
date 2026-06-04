@@ -3,13 +3,16 @@ import type { ReactNode } from "react";
 import VideoCard from "../components/VideoCard";
 import {
   addTagOption,
+  addVideoToPlan,
   deleteVideo,
   getTagOptions,
   isDeletableTagOption,
+  isVideoInPlan,
   updateVideo,
   type CustomTagGroup,
 } from "../storage/localStorage";
 import type { Video } from "../types/video";
+import { getDateKey, getNextDateKeys } from "../utils/date";
 import { DURATION_OPTIONS } from "../utils/tagOptions";
 
 interface LibraryPageProps {
@@ -76,6 +79,11 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
   const [selectableOptions, setSelectableOptions] = useState(() => getTagOptions());
   const [openCustomGroup, setOpenCustomGroup] = useState<string | null>(null);
   const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
+  const [planningVideo, setPlanningVideo] = useState<Video | null>(null);
+  const [customPlanDate, setCustomPlanDate] = useState(getDateKey());
+  const [planFeedback, setPlanFeedback] = useState("");
+  const [planVersion, setPlanVersion] = useState(0);
+  const today = getDateKey();
 
   useEffect(() => {
     sessionStorage.setItem(LIBRARY_QUERY_KEY, query);
@@ -84,6 +92,16 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
   useEffect(() => {
     sessionStorage.setItem(LIBRARY_FILTERS_KEY, JSON.stringify(filters));
   }, [filters]);
+
+  useEffect(() => {
+    if (!planFeedback) return;
+
+    const timer = window.setTimeout(() => {
+      setPlanFeedback("");
+    }, 2400);
+
+    return () => window.clearTimeout(timer);
+  }, [planFeedback]);
 
   const filteredVideos = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -166,6 +184,13 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
     sessionStorage.setItem(LIBRARY_SCROLL_KEY, String(window.scrollY));
     window.open(video.url, "_blank", "noopener,noreferrer");
     onVideosChanged();
+  }
+
+  function addPlanForDate(video: Video, date: string, message: string) {
+    addVideoToPlan(date, video.id);
+    setPlanVersion((version) => version + 1);
+    setPlanFeedback(message);
+    setPlanningVideo(null);
   }
 
   function updateDraft(updates: Partial<Video>) {
@@ -274,6 +299,9 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
           <VideoCard key={video.id} video={video}>
             <div className="card-actions">
               <button type="button" onClick={() => openSource(video)}>打开</button>
+              <button type="button" onClick={() => setPlanningVideo(video)}>
+                加入计划
+              </button>
               <button type="button" onClick={() => startEdit(video)}>编辑</button>
               <button className="danger-action" type="button" onClick={() => removeVideo(video)}>删除</button>
             </div>
@@ -353,6 +381,41 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
               <textarea value={editDraft.note} onChange={(event) => updateDraft({ note: event.target.value })} />
             </label>
             <button className="primary-button" type="button" onClick={saveEdit}>保存修改</button>
+          </div>
+        </div>
+      )}
+
+      {planFeedback && <p className="floating-feedback">{planFeedback}</p>}
+
+      {planningVideo && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="加入计划">
+          <div className="edit-modal">
+            <div className="section-header">
+              <h2>加入计划</h2>
+              <button className="text-button" type="button" onClick={() => setPlanningVideo(null)}>取消</button>
+            </div>
+            <VideoCard video={planningVideo} />
+            <button className="primary-button" type="button" disabled={isVideoInPlan(today, planningVideo.id)} onClick={() => addPlanForDate(planningVideo, today, "已放进今天的小岛计划。")}>
+              {isVideoInPlan(today, planningVideo.id) ? "已在今日计划" : "加入今日计划"}
+            </button>
+            <div className="week-plan-box">
+              <span>加入本周计划</span>
+              <p className="muted">当前实现为：选择本周/未来 7 天里的某一天加入计划。</p>
+              <div className="filter-scroll">
+                {getNextDateKeys(7).map((date) => (
+                  <button key={date} className="filter-chip" type="button" onClick={() => addPlanForDate(planningVideo, date, `已放进 ${date} 的小岛计划。`)}>
+                    {date}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="form-field">
+              <span>自定义日期计划</span>
+              <input type="date" value={customPlanDate} onChange={(event) => setCustomPlanDate(event.target.value)} />
+            </label>
+            <button className="primary-button" type="button" onClick={() => addPlanForDate(planningVideo, customPlanDate, `已放进 ${customPlanDate} 的小岛计划。`)}>
+              加入自定义日期计划
+            </button>
           </div>
         </div>
       )}
