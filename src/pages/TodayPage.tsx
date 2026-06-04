@@ -90,8 +90,6 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
   const [planVersion, setPlanVersion] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [checkinDialogOpen, setCheckinDialogOpen] = useState(false);
-  const [swipedPlanItemId, setSwipedPlanItemId] = useState<string | null>(null);
-  const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
   const plan = useMemo(() => getPlanByDate(today), [today, planVersion]);
   const checkinRecords = useMemo(() => getCheckinRecords(), [planVersion]);
   const completedTodayIds = checkinRecords
@@ -145,7 +143,6 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
 
   function toggleTodayPlanItem(videoId: string) {
     togglePlanItemCompleted(today, videoId);
-    setSwipedPlanItemId(null);
     refreshPlan();
   }
 
@@ -154,21 +151,7 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
     if (!window.confirm(`确认从今日计划移除「${video.title}」吗？`)) return;
 
     removeVideoFromPlan(today, video.id);
-    setSwipedPlanItemId(null);
     refreshPlan();
-  }
-
-  function handlePlanTouchEnd(event: React.TouchEvent, itemId: string) {
-    if (swipeStartX === null) return;
-
-    const deltaX = event.changedTouches[0].clientX - swipeStartX;
-    if (deltaX < -45 && !alreadyCheckedIn) {
-      setSwipedPlanItemId(itemId);
-    }
-    if (deltaX > 45) {
-      setSwipedPlanItemId(null);
-    }
-    setSwipeStartX(null);
   }
 
   function completeTodayCheckin() {
@@ -206,12 +189,6 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
     }
   }, [allCompleted, alreadyCheckedIn, planVersion]);
 
-  useEffect(() => {
-    if (alreadyCheckedIn) {
-      setSwipedPlanItemId(null);
-    }
-  }, [alreadyCheckedIn]);
-
   return (
     <section className="page-stack">
       <div className="panel hero-panel island-hero">
@@ -230,20 +207,7 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
         <div className="card-list">
           {plannedItems.length === 0 && <p className="empty-copy">今天的小岛还空着，先从推荐或视频库加入一个想练的视频吧。</p>}
           {plannedItems.map(({ item, video }) => (
-            <div
-              key={item.id}
-              className={swipedPlanItemId === item.id ? "plan-todo-row swiped" : "plan-todo-row"}
-              onTouchStart={(event) => setSwipeStartX(event.touches[0].clientX)}
-              onTouchEnd={(event) => handlePlanTouchEnd(event, item.id)}
-            >
-              <button
-                className="plan-swipe-remove"
-                type="button"
-                disabled={alreadyCheckedIn}
-                onClick={() => confirmRemoveTodayPlan(video)}
-              >
-                移除
-              </button>
+            <div key={item.id} className="plan-todo-row">
               <div className="plan-todo-foreground">
                 <label className="todo-checkbox" aria-label={item.completed ? "标记为未完成" : "标记为完成"}>
                   <input
@@ -258,6 +222,9 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
                   <div className="plan-actions">
                     <button type="button" disabled={item.completed || alreadyCheckedIn} onClick={() => openTraining(video)}>
                       去跟练
+                    </button>
+                    <button type="button" disabled={alreadyCheckedIn} onClick={() => confirmRemoveTodayPlan(video)}>
+                      移除计划
                     </button>
                   </div>
                 </VideoCard>

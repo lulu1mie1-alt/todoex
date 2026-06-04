@@ -58,8 +58,21 @@ function App() {
           window.scrollTo({ top: storedY });
         }
       });
+    } else {
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0 });
+      });
     }
   }, [activePage]);
+
+  function handlePageChange(page: AppPage) {
+    if (page === activePage) {
+      window.scrollTo({ top: 0 });
+      return;
+    }
+
+    setActivePage(page);
+  }
 
   return (
     <div className="app-shell">
@@ -70,13 +83,14 @@ function App() {
         </div>
         <div className="page-chip">{pageTitles[activePage]}</div>
       </header>
+      <BottomNav activePage={activePage} onChange={handlePageChange} />
 
       <main className="page-body">
         {activePage === "today" && (
           <TodayPage
             videos={savedVideos}
             onVideosChanged={refreshSavedVideos}
-            onGoImport={() => setActivePage("import")}
+            onGoImport={() => handlePageChange("import")}
           />
         )}
         {activePage === "library" && <LibraryPage videos={savedVideos} onVideosChanged={refreshSavedVideos} />}
@@ -84,15 +98,13 @@ function App() {
           <ImportPage
             onSaved={() => {
               refreshSavedVideos();
-              setActivePage("library");
+              handlePageChange("library");
             }}
           />
         )}
         {activePage === "records" && <RecordsPage videos={videos} />}
         {activePage === "settings" && <SettingsPage />}
       </main>
-
-      <BottomNav activePage={activePage} onChange={setActivePage} />
     </div>
   );
 }

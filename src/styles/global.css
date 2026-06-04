@@ -93,7 +93,7 @@ textarea:focus-visible {
   max-width: 720px;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 18px 14px 104px;
+  padding: 18px 14px 42px;
 }
 
 .app-header {
@@ -248,7 +248,7 @@ h2 {
 .chip:active,
 .filter-chip:active,
 .quick-chip:active,
-.bottom-nav button:active {
+.island-nav button:active {
   transform: translateY(1px);
 }
 
@@ -256,6 +256,7 @@ h2 {
   display: grid;
   gap: 8px;
   position: relative;
+  min-width: 0;
 }
 
 .video-card::before {
@@ -673,39 +674,29 @@ textarea {
 
 .plan-todo-row {
   border-radius: var(--radius-lg);
-  display: grid;
-  overflow-x: auto;
+  display: block;
+  overflow: visible;
   position: relative;
-  scrollbar-width: none;
-}
-
-.plan-todo-row::-webkit-scrollbar {
-  display: none;
-}
-
-.plan-todo-row.swiped .plan-todo-foreground {
-  transform: translateX(-86px);
 }
 
 .plan-todo-foreground {
   align-items: stretch;
-  display: block;
-  min-width: 100%;
-  padding-left: 38px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  min-width: 0;
   position: relative;
-  transition: transform 180ms ease;
   z-index: 1;
 }
 
 .todo-checkbox {
   align-items: center;
   display: flex;
-  height: 100%;
+  height: auto;
   justify-content: center;
-  left: 0;
+  min-height: 52px;
   padding: 0;
-  position: absolute;
-  top: 0;
+  position: relative;
   width: 30px;
 }
 
@@ -722,22 +713,6 @@ textarea {
   opacity: 0.65;
 }
 
-.plan-swipe-remove {
-  background: var(--coral-soft);
-  border-radius: var(--radius-lg);
-  color: #a33d2d;
-  font-weight: 850;
-  height: calc(100% - 2px);
-  min-height: 0;
-  padding: 0 16px;
-  position: absolute;
-  right: 1px;
-  top: 1px;
-  width: 78px;
-  z-index: 0;
-}
-
-.plan-swipe-remove:disabled,
 .plan-actions button:disabled {
   background: #e8e3d4;
   color: #8d9485;
@@ -747,7 +722,7 @@ textarea {
 .plan-actions {
   display: grid;
   gap: 8px;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 6px;
 }
 
@@ -1084,35 +1059,38 @@ textarea {
   justify-self: start;
 }
 
-.bottom-nav {
-  backdrop-filter: blur(18px);
-  background: rgba(255, 254, 248, 0.84);
-  border: 1px solid rgba(228, 221, 202, 0.9);
+.island-nav {
+  background:
+    linear-gradient(180deg, rgba(255, 249, 222, 0.96), rgba(238, 247, 234, 0.96)),
+    radial-gradient(circle at 18% 12%, rgba(255, 217, 120, 0.36), transparent 34%);
+  border: 1px solid rgba(228, 221, 202, 0.94);
   border-radius: 24px;
-  bottom: 14px;
   box-shadow: 0 12px 34px rgba(86, 74, 45, 0.16);
   display: grid;
   gap: 5px;
   grid-template-columns: repeat(5, 1fr);
-  left: 50%;
-  max-width: 680px;
+  margin: 0 0 16px;
+  overflow-x: auto;
   padding: 6px;
-  position: fixed;
-  transform: translateX(-50%);
-  width: calc(100% - 28px);
+  position: relative;
+  scrollbar-width: none;
 }
 
-.bottom-nav button {
+.island-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.island-nav button {
   background: transparent;
   border-radius: 18px;
   color: #5e6b63;
   font-size: 13px;
   font-weight: 850;
-  min-width: 0;
+  min-width: 76px;
   padding: 9px 3px;
 }
 
-.bottom-nav button.active {
+.island-nav button.active {
   background:
     linear-gradient(180deg, rgba(255, 217, 120, 0.58), transparent 36%),
     var(--leaf);
@@ -1156,7 +1134,23 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .bottom-nav button {
+  .island-nav button {
     font-size: 12px;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .island-nav {
+    grid-template-columns: repeat(5, minmax(76px, 1fr));
+  }
+
+  .plan-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .video-title-line,
+  .video-detail-line {
+    white-space: normal;
   }
 }

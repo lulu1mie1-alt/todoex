@@ -20,7 +20,7 @@ interface BottomNavProps {
 
 function BottomNav({ activePage, onChange }: BottomNavProps) {
   return (
-    <nav className="bottom-nav" aria-label="主导航">
+    <nav className="island-nav" aria-label="主导航">
       {navItems.map((item) => (
         <button
           key={item.key}
