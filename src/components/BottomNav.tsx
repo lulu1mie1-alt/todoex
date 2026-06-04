@@ -12,7 +12,6 @@ const navItems: NavItem[] = [
   { key: "library", label: "图鉴", icon: "album" },
   { key: "import", label: "投递", icon: "post" },
   { key: "records", label: "周报", icon: "stamp" },
-  { key: "settings", label: "设置", icon: "gear" },
 ];
 
 interface BottomNavProps {

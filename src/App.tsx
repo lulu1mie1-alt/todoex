@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Card, Title } from "animal-island-ui";
+import { Button } from "animal-island-ui";
 import BottomNav from "./components/BottomNav";
 import TodayPage from "./pages/TodayPage";
 import LibraryPage from "./pages/LibraryPage";
 import ImportPage from "./pages/ImportPage";
 import RecordsPage from "./pages/RecordsPage";
 import SettingsPage from "./pages/SettingsPage";
+import animalLogo from "./assets/animal-island-demo/animal_icon.png";
 import { getVideos } from "./storage/localStorage";
 import { mockVideos } from "./storage/mockVideos";
 import type { AppPage } from "./types/navigation";
@@ -16,6 +17,12 @@ const pageTitles: Record<AppPage, string> = {
   import: "导入视频",
   records: "记录复盘",
   settings: "设置",
+};
+
+const headerActions: Partial<Record<AppPage, { label: string; target?: AppPage }>> = {
+  today: { label: "替我安排" },
+  library: { label: "投递", target: "import" },
+  records: { label: "导出", target: "settings" },
 };
 
 const ACTIVE_PAGE_KEY = "fitnessIsland.activePage";
@@ -75,8 +82,19 @@ function App() {
     setActivePage(page);
   }
 
+  function handleHeaderAction() {
+    const targetPage = headerActions[activePage]?.target;
+    if (targetPage) {
+      handlePageChange(targetPage);
+    }
+  }
+
+  const headerAction = headerActions[activePage];
+  const headerActionLabel = headerAction?.label ?? pageTitles[activePage];
+  const hasHeaderActionTarget = Boolean(headerAction?.target);
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell page-${activePage}`}>
       <div className="island-background" aria-hidden="true">
         <span className="island-cloud cloud-one" />
         <span className="island-cloud cloud-two" />
@@ -87,11 +105,21 @@ function App() {
         <span className="island-breeze breeze-two" />
       </div>
       <header className="app-header">
-        <div>
-          <p className="eyebrow">Fitness Island</p>
-          <Title color="app-teal" size="large">居家跟练打卡小岛</Title>
+        <div className="brand-title">
+          <img className="brand-icon" src={animalLogo} alt="" decoding="async" />
+          <div className="brand-copy">
+            <h1 className="brand-heading">居家跟练打卡小岛</h1>
+            <p>把今天的跟练，轻轻放进小岛计划里</p>
+          </div>
         </div>
-        <Card className="page-chip" pattern="app-yellow">{pageTitles[activePage]}</Card>
+        <Button
+          className={`page-chip page-chip-action${hasHeaderActionTarget ? "" : " page-chip-static"}`}
+          htmlType="button"
+          type="primary"
+          onClick={hasHeaderActionTarget ? handleHeaderAction : undefined}
+        >
+          {headerActionLabel}
+        </Button>
       </header>
       <BottomNav activePage={activePage} onChange={handlePageChange} />
 
