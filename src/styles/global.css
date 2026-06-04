@@ -133,7 +133,7 @@ textarea:focus-visible {
   max-width: 760px;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 18px 14px 72px;
+  padding: 18px 14px max(128px, calc(118px + env(safe-area-inset-bottom)));
   position: relative;
 }
 
@@ -299,7 +299,7 @@ h2 {
 }
 
 .page-body {
-  padding-bottom: max(28px, env(safe-area-inset-bottom));
+  padding-bottom: max(104px, calc(92px + env(safe-area-inset-bottom)));
 }
 
 .panel,
@@ -564,7 +564,7 @@ h2 {
   background: var(--animal-primary-bg);
   border: 2px solid rgba(25, 200, 185, 0.22);
   color: var(--animal-primary-active);
-  max-width: 50%;
+  max-width: 44%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1040,6 +1040,10 @@ textarea {
   z-index: 1;
 }
 
+.plan-todo-foreground > .video-card {
+  min-width: 0;
+}
+
 .todo-checkbox {
   align-items: center;
   display: flex;
@@ -1086,6 +1090,7 @@ textarea {
 .plan-actions button {
   width: 100%;
   min-width: 0;
+  white-space: normal;
 }
 
 .checkin-button {
@@ -1453,12 +1458,16 @@ textarea {
   display: grid;
   gap: 5px;
   grid-template-columns: repeat(5, minmax(76px, 1fr));
-  margin: 0 0 16px;
+  margin: 0;
   overflow-x: auto;
   padding: 7px;
-  position: sticky;
-  top: 8px;
-  z-index: 5;
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: calc(100% - 28px);
+  max-width: 732px;
+  z-index: 20;
   scrollbar-width: none;
 }
 

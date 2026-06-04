@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import VideoCard from "../components/VideoCard";
 import {
   addCheckinRecord,
@@ -183,6 +183,12 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
     refreshPlan("今天的小岛亮起来了。你完成了今日计划的小任务，不是每一天都要暴汗，今天完成就已经很棒。");
   }
 
+  useEffect(() => {
+    if (allCompleted && !alreadyCheckedIn) {
+      completeTodayCheckin();
+    }
+  }, [allCompleted, alreadyCheckedIn, planVersion]);
+
   return (
     <section className="page-stack">
       <div className="panel hero-panel island-hero">
@@ -223,7 +229,7 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
                 <VideoCard video={video}>
                   <div className={item.completed ? "plan-status stamp-badge done" : "plan-status stamp-badge"}>{item.completed ? "已完成" : "待完成"}</div>
                   <div className="plan-actions">
-                    <button type="button" disabled={!video.url} onClick={() => openTraining(video)}>
+                    <button type="button" disabled={item.completed || alreadyCheckedIn || !video.url} onClick={() => openTraining(video)}>
                       去跟练
                     </button>
                     <button type="button" disabled={alreadyCheckedIn} onClick={() => confirmRemoveTodayPlan(video)}>
@@ -235,8 +241,8 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
             </div>
           ))}
         </div>
-        <button className="primary-button checkin-button settlement-button" type="button" disabled={!allCompleted || alreadyCheckedIn} onClick={completeTodayCheckin}>
-          {alreadyCheckedIn ? "今日小岛已点亮" : allCompleted ? "点亮今日小岛" : `打卡进度（${completedCount}/${totalCount}）`}
+        <button className="primary-button checkin-button settlement-button" type="button" disabled={totalCount === 0 || alreadyCheckedIn} onClick={completeTodayCheckin}>
+          {alreadyCheckedIn ? "今日小岛已点亮" : `打卡进度（${completedCount}/${totalCount}）`}
         </button>
       </div>
 
