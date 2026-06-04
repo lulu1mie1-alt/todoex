@@ -55,7 +55,7 @@ function RecordsPage({ videos: _videos }: RecordsPageProps) {
         <p>{weeklyStats.summary}</p>
       </div>
 
-      <section className="panel recap-panel" aria-label="最近 7 天周复盘">
+      <section className="panel recap-panel weekly-island-report" aria-label="最近 7 天周复盘">
         <div className="section-header">
           <h2>最近 7 天周复盘</h2>
           <span>{weeklyStats.totalCount} 次</span>

@@ -76,6 +76,15 @@ function App() {
 
   return (
     <div className="app-shell">
+      <div className="island-background" aria-hidden="true">
+        <span className="island-cloud cloud-one" />
+        <span className="island-cloud cloud-two" />
+        <span className="island-leaf leaf-one" />
+        <span className="island-leaf leaf-two" />
+        <span className="island-leaf leaf-three" />
+        <span className="island-breeze breeze-one" />
+        <span className="island-breeze breeze-two" />
+      </div>
       <header className="app-header">
         <div>
           <p className="eyebrow">Fitness Island</p>

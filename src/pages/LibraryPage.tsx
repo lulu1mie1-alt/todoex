@@ -269,7 +269,7 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
 
   return (
     <section className="page-stack">
-      <div className="panel">
+      <div className="panel library-hero">
         <div className="section-header">
           <h2>视频库</h2>
           <span>{filteredVideos.length} / {videos.length} 条</span>

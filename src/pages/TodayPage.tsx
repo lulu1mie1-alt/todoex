@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import VideoCard from "../components/VideoCard";
 import {
   addCheckinRecord,
@@ -183,23 +183,26 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
     refreshPlan("今天的小岛亮起来了。你完成了今日计划的小任务，不是每一天都要暴汗，今天完成就已经很棒。");
   }
 
-  useEffect(() => {
-    if (allCompleted && !alreadyCheckedIn) {
-      completeTodayCheckin();
-    }
-  }, [allCompleted, alreadyCheckedIn, planVersion]);
-
   return (
     <section className="page-stack">
       <div className="panel hero-panel island-hero">
-        <p className="section-kicker">{today}</p>
-        <h2>{heroTitle}</h2>
-        <p>{heroCopy}</p>
+        <div className="island-hero-copy">
+          <p className="section-kicker">{today}</p>
+          <h2>{heroTitle}</h2>
+          <p>{heroCopy}</p>
+        </div>
+        <div className="hero-island-status" aria-label={`今日打卡进度 ${completedCount}/${totalCount}`}>
+          <span>今日进度</span>
+          <strong>{completedCount}/{totalCount}</strong>
+          <div className="island-progress-track">
+            <i style={{ width: totalCount > 0 ? `${Math.round((completedCount / totalCount) * 100)}%` : "0%" }} />
+          </div>
+        </div>
       </div>
 
       {feedback && <p className="form-success">{feedback}</p>}
 
-      <div className="panel">
+      <div className="panel notice-board today-board">
         <div className="section-header">
           <h2>今日计划</h2>
           <span>（{completedCount}/{totalCount}）</span>
@@ -207,7 +210,7 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
         <div className="card-list">
           {plannedItems.length === 0 && <p className="empty-copy">今天的小岛还空着，先从推荐或视频库加入一个想练的视频吧。</p>}
           {plannedItems.map(({ item, video }) => (
-            <div key={item.id} className="plan-todo-row">
+            <div key={item.id} className={item.completed ? "plan-todo-row quest-card completed" : "plan-todo-row quest-card"}>
               <div className="plan-todo-foreground">
                 <label className="todo-checkbox" aria-label={item.completed ? "标记为未完成" : "标记为完成"}>
                   <input
@@ -218,9 +221,9 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
                   />
                 </label>
                 <VideoCard video={video}>
-                  <div className="plan-status">{item.completed ? "已完成" : "未完成"}</div>
+                  <div className={item.completed ? "plan-status stamp-badge done" : "plan-status stamp-badge"}>{item.completed ? "已完成" : "待完成"}</div>
                   <div className="plan-actions">
-                    <button type="button" disabled={item.completed || alreadyCheckedIn} onClick={() => openTraining(video)}>
+                    <button type="button" disabled={!video.url} onClick={() => openTraining(video)}>
                       去跟练
                     </button>
                     <button type="button" disabled={alreadyCheckedIn} onClick={() => confirmRemoveTodayPlan(video)}>
@@ -232,14 +235,14 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
             </div>
           ))}
         </div>
-        <button className="primary-button checkin-button" type="button" disabled={totalCount === 0 || alreadyCheckedIn} onClick={completeTodayCheckin}>
-          {alreadyCheckedIn ? "今日小岛已点亮" : "今天就这样吧"}
+        <button className="primary-button checkin-button settlement-button" type="button" disabled={!allCompleted || alreadyCheckedIn} onClick={completeTodayCheckin}>
+          {alreadyCheckedIn ? "今日小岛已点亮" : allCompleted ? "点亮今日小岛" : `打卡进度（${completedCount}/${totalCount}）`}
         </button>
       </div>
 
       {checkinDialogOpen && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="今日打卡完成">
-          <div className="checkin-modal">
+          <div className="checkin-modal stamp-modal">
             <p className="section-kicker">Check-in</p>
             <h2>今天的小岛亮起来了</h2>
             <p>你已经认真照顾过自己了。今天就这样吧，也很好。</p>
@@ -250,7 +253,7 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
         </div>
       )}
 
-      <div className="panel">
+      <div className="panel recommendation-board">
         <div className="section-header">
           <h2>今日推荐</h2>
           <button className="helper-action" type="button" onClick={arrangeTodayPlan}>

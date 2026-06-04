@@ -23,7 +23,7 @@ function VideoCard({ video, children }: VideoCardProps) {
   ].join("｜");
 
   return (
-    <article className="video-card">
+    <article className="video-card collection-card">
       <div className="video-card-top">
         <span className="body-part-pill">{video.bodyPart}</span>
         <span className="platform-pill">{video.platform}</span>

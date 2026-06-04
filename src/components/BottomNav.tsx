@@ -3,14 +3,15 @@ import type { AppPage } from "../types/navigation";
 interface NavItem {
   key: AppPage;
   label: string;
+  icon: string;
 }
 
 const navItems: NavItem[] = [
-  { key: "today", label: "今日" },
-  { key: "library", label: "视频库" },
-  { key: "import", label: "导入" },
-  { key: "records", label: "记录" },
-  { key: "settings", label: "设置" },
+  { key: "today", label: "今日", icon: "island" },
+  { key: "library", label: "图鉴", icon: "album" },
+  { key: "import", label: "投递", icon: "post" },
+  { key: "records", label: "周报", icon: "stamp" },
+  { key: "settings", label: "设置", icon: "gear" },
 ];
 
 interface BottomNavProps {
@@ -26,9 +27,11 @@ function BottomNav({ activePage, onChange }: BottomNavProps) {
           key={item.key}
           type="button"
           className={activePage === item.key ? "active" : ""}
+          aria-current={activePage === item.key ? "page" : undefined}
           onClick={() => onChange(item.key)}
         >
-          {item.label}
+          <span className={`nav-icon nav-icon-${item.icon}`} aria-hidden="true" />
+          <span>{item.label}</span>
         </button>
       ))}
     </nav>

@@ -197,13 +197,13 @@ function ImportPage({ onSaved }: ImportPageProps) {
 
   return (
     <section className="page-stack">
-      <div className="panel hero-panel">
+      <div className="panel hero-panel import-hero">
         <p className="section-kicker">Import</p>
         <h2>把跟练链接放进小岛</h2>
         <p>把你刚刚复制的跟练链接贴在这里，我来帮你放进小岛。识别不到也没关系，可以手动补全。</p>
       </div>
 
-      <div className="panel import-panel">
+      <div className="panel import-panel island-post-box">
         <div className="section-header">
           <h2>导入视频</h2>
           <span>{form.platform}</span>
@@ -327,7 +327,7 @@ function ImportPage({ onSaved }: ImportPageProps) {
         </label>
 
         <button className="primary-button" type="button" onClick={handleSave}>
-          放进视频库
+          放进小岛视频库
         </button>
       </div>
     </section>
