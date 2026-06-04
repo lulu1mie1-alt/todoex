@@ -141,7 +141,9 @@ textarea:focus-visible {
   overflow: hidden;
 }
 
-.app-shell.page-today .island-background {
+.app-shell.page-today .island-background,
+.app-shell.page-library .island-background,
+.app-shell.page-records .island-background {
   background:
     linear-gradient(180deg, rgba(125, 195, 149, 0.12), rgba(125, 195, 149, 0.34)),
     url("../assets/animal-island-demo/home_bg.webp") 0 0 / auto repeat,
