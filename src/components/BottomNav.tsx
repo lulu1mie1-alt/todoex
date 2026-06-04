@@ -1,3 +1,4 @@
+import { Button } from "animal-island-ui";
 import type { AppPage } from "../types/navigation";
 
 interface NavItem {
@@ -23,16 +24,17 @@ function BottomNav({ activePage, onChange }: BottomNavProps) {
   return (
     <nav className="island-nav" aria-label="主导航">
       {navItems.map((item) => (
-        <button
+        <Button
           key={item.key}
-          type="button"
+          htmlType="button"
+          type={activePage === item.key ? "primary" : "text"}
           className={activePage === item.key ? "active" : ""}
           aria-current={activePage === item.key ? "page" : undefined}
           onClick={() => onChange(item.key)}
         >
           <span className={`nav-icon nav-icon-${item.icon}`} aria-hidden="true" />
           <span>{item.label}</span>
-        </button>
+        </Button>
       ))}
     </nav>
   );

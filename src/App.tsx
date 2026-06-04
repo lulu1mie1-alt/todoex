@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Card, Title } from "animal-island-ui";
 import BottomNav from "./components/BottomNav";
 import TodayPage from "./pages/TodayPage";
 import LibraryPage from "./pages/LibraryPage";
@@ -88,9 +89,9 @@ function App() {
       <header className="app-header">
         <div>
           <p className="eyebrow">Fitness Island</p>
-          <h1>居家跟练打卡小岛</h1>
+          <Title color="app-teal" size="large">居家跟练打卡小岛</Title>
         </div>
-        <div className="page-chip">{pageTitles[activePage]}</div>
+        <Card className="page-chip" pattern="app-yellow">{pageTitles[activePage]}</Card>
       </header>
       <BottomNav activePage={activePage} onChange={handlePageChange} />
 

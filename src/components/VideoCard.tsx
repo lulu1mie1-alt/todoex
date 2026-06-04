@@ -1,3 +1,4 @@
+import { Card } from "animal-island-ui";
 import type { Video } from "../types/video";
 
 interface VideoCardProps {
@@ -23,7 +24,7 @@ function VideoCard({ video, children }: VideoCardProps) {
   ].join("｜");
 
   return (
-    <article className="video-card collection-card">
+    <Card className="video-card collection-card" pattern="app-pink">
       <div className="video-card-top">
         <span className="body-part-pill">{video.bodyPart}</span>
         <span className="platform-pill">{video.platform}</span>
@@ -37,7 +38,7 @@ function VideoCard({ video, children }: VideoCardProps) {
         <span>{formatPracticeTime(video.lastPracticedAt)}</span>
       </div>
       {children}
-    </article>
+    </Card>
   );
 }
 

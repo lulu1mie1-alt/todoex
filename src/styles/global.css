@@ -805,21 +805,6 @@ textarea {
     var(--animal-bg-content);
 }
 
-.island-post-box::before {
-  content: "";
-  position: absolute;
-  top: 18px;
-  right: 20px;
-  width: 42px;
-  height: 28px;
-  border: 2px solid rgba(121, 79, 39, 0.18);
-  border-radius: 8px;
-  background:
-    linear-gradient(35deg, transparent 48%, rgba(121, 79, 39, 0.18) 49% 51%, transparent 52%),
-    linear-gradient(-35deg, transparent 48%, rgba(121, 79, 39, 0.18) 49% 51%, transparent 52%),
-    #fffefa;
-}
-
 .import-panel {
   display: grid;
   gap: 14px;

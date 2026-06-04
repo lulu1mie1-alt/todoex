@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { Input } from "animal-island-ui";
 import VideoCard from "../components/VideoCard";
 import {
   addTagOption,
@@ -274,10 +275,13 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
           <h2>视频库</h2>
           <span>{filteredVideos.length} / {videos.length} 条</span>
         </div>
-        <input
+        <Input
           className="search-input"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onClear={() => setQuery("")}
+          allowClear
+          shadow
           placeholder="搜索作者、标题、部位或标签"
         />
       </div>
