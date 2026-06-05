@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { ReactNode } from "react";
+import DurationPicker from "../components/DurationPicker";
 import {
   BODY_PART_OPTIONS,
   DURATION_OPTIONS,
@@ -7,6 +8,8 @@ import {
   INTENSITY_OPTIONS,
   SPECIAL_TAG_OPTIONS,
   TRAINING_TYPE_OPTIONS,
+  normalizeBodyPartList,
+  normalizeBodyPartOption,
 } from "../utils/tagOptions";
 import { detectPlatform } from "../utils/platform";
 import {
@@ -35,13 +38,39 @@ const initialForm: VideoImportForm = {
   author: "",
   title: "",
   bodyPart: [BODY_PART_OPTIONS[0]],
-  duration: DURATION_OPTIONS[1],
+  duration: "10min",
   intensity: INTENSITY_OPTIONS[1],
   equipment: [EQUIPMENT_OPTIONS[0]],
   trainingType: TRAINING_TYPE_OPTIONS[0],
   specialTags: [],
   note: "",
 };
+
+function inferVideoMetaFromTitle(title: string) {
+  const normalizedTitle = title.toLowerCase();
+  const durationMatch = normalizedTitle.match(/(\d{1,3})\s*(?:min|分钟|分)/i);
+  const duration = durationMatch ? `${Number(durationMatch[1])}min` : "";
+  const matchedDuration = (DURATION_OPTIONS as readonly string[]).includes(duration) ? duration : "";
+
+  const bodyPartRules: Array<{ value: string; keywords: string[] }> = [
+    { value: "全身", keywords: ["全身", "燃脂", "暴汗", "hiit", "tabata", "有氧"] },
+    { value: "臀腿", keywords: ["臀腿", "臀", "腿", "蜜桃臀", "下肢"] },
+    { value: "核心腰腹", keywords: ["核心", "马甲线", "平板", "腹部", "腹", "肚子", "肚腩", "腰腹", "腰"] },
+    { value: "肩背", keywords: ["肩颈", "肩", "颈", "斜方肌", "背部", "美背", "背"] },
+    { value: "手臂", keywords: ["手臂", "拜拜肉", "上肢"] },
+    { value: "拉伸放松", keywords: ["拉伸", "放松", "睡前", "舒缓", "瑜伽"] },
+  ];
+
+  const bodyPart = bodyPartRules
+    .filter((rule) => (BODY_PART_OPTIONS as readonly string[]).includes(rule.value))
+    .filter((rule) => rule.keywords.some((keyword) => normalizedTitle.includes(keyword.toLowerCase())))
+    .map((rule) => rule.value);
+
+  return {
+    bodyPart: normalizeBodyPartList(bodyPart),
+    duration: matchedDuration,
+  };
+}
 
 function ImportPage({ onSaved }: ImportPageProps) {
   const [form, setForm] = useState<VideoImportForm>(initialForm);
@@ -59,13 +88,26 @@ function ImportPage({ onSaved }: ImportPageProps) {
 
   function handleShareTextChange(value: string) {
     const url = extractFirstUrl(value);
-    const title = url ? extractCandidateTitle(value, url) : "";
+    const title = url ? extractCandidateTitle(value, url) : value.split(/\r?\n/).find((line) => line.trim())?.trim().slice(0, 80) || "";
+    const inferredMeta = inferVideoMetaFromTitle(title);
 
     updateForm({
       shareText: value,
       url,
       platform: url ? detectPlatform(url) : "其他平台",
       title: title || form.title,
+      ...(inferredMeta.bodyPart.length > 0 ? { bodyPart: inferredMeta.bodyPart } : {}),
+      ...(inferredMeta.duration ? { duration: inferredMeta.duration } : {}),
+    });
+  }
+
+  function handleTitleChange(title: string) {
+    const inferredMeta = inferVideoMetaFromTitle(title);
+
+    updateForm({
+      title,
+      ...(inferredMeta.bodyPart.length > 0 ? { bodyPart: inferredMeta.bodyPart } : {}),
+      ...(inferredMeta.duration ? { duration: inferredMeta.duration } : {}),
     });
   }
 
@@ -77,12 +119,13 @@ function ImportPage({ onSaved }: ImportPageProps) {
   }
 
   function toggleRequiredMulti(field: "bodyPart" | "equipment", value: string) {
+    const nextValue = field === "bodyPart" ? normalizeBodyPartOption(value) : value;
     const currentValues = form[field];
-    const nextValues = currentValues.includes(value)
+    const nextValues = currentValues.includes(nextValue)
       ? currentValues.length > 1
-        ? currentValues.filter((item) => item !== value)
+        ? currentValues.filter((item) => item !== nextValue)
         : currentValues
-      : [...currentValues, value];
+      : [...currentValues, nextValue];
     updateForm({ [field]: nextValues });
   }
 
@@ -231,6 +274,14 @@ function ImportPage({ onSaved }: ImportPageProps) {
             <span>候选标题</span>
             <strong>{form.title || "可以手动输入"}</strong>
           </div>
+          <div>
+            <span>识别部位</span>
+            <strong>{form.bodyPart.join("、") || "待识别"}</strong>
+          </div>
+          <div>
+            <span>识别时长</span>
+            <strong>{form.duration || "待识别"}</strong>
+          </div>
         </div>
 
         {error && <p className="form-error">{error}</p>}
@@ -249,7 +300,7 @@ function ImportPage({ onSaved }: ImportPageProps) {
             <span>视频标题</span>
             <input
               value={form.title}
-              onChange={(event) => updateForm({ title: event.target.value })}
+              onChange={(event) => handleTitleChange(event.target.value)}
               placeholder="例：肩颈放松 10min"
             />
           </label>
@@ -266,13 +317,10 @@ function ImportPage({ onSaved }: ImportPageProps) {
           onDeleteOption={(option) => deleteSelectableOption("bodyPart", option)}
         />
         {renderCustomInput("bodyPart", "写一个锻炼部位")}
-        <ChipGroup
-          label="时长"
-          options={DURATION_OPTIONS}
-          value={form.duration}
-          onChange={(duration) => updateForm({ duration })}
-          scrollable
-        />
+        <div className="chip-group duration-field">
+          <span>时长</span>
+          <DurationPicker value={form.duration} onChange={(duration) => updateForm({ duration })} />
+        </div>
         <ChipGroup
           label="强度"
           options={selectableOptions.intensity}

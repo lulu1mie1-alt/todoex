@@ -90,7 +90,6 @@ function App() {
   }
 
   const headerAction = headerActions[activePage];
-  const headerActionLabel = headerAction?.label ?? pageTitles[activePage];
   const hasHeaderActionTarget = Boolean(headerAction?.target);
 
   return (
@@ -108,18 +107,23 @@ function App() {
         <div className="brand-title">
           <img className="brand-icon" src={animalLogo} alt="" decoding="async" />
           <div className="brand-copy">
-            <h1 className="brand-heading">居家跟练打卡小岛</h1>
+            <h1 className="brand-heading">
+              <span>Fitness</span>
+              <span>at home</span>
+            </h1>
             <p>把今天的跟练，轻轻放进小岛计划里</p>
           </div>
         </div>
-        <Button
-          className={`page-chip page-chip-action${hasHeaderActionTarget ? "" : " page-chip-static"}`}
-          htmlType="button"
-          type="primary"
-          onClick={hasHeaderActionTarget ? handleHeaderAction : undefined}
-        >
-          {headerActionLabel}
-        </Button>
+        {headerAction && (
+          <Button
+            className={`page-chip page-chip-action${hasHeaderActionTarget ? "" : " page-chip-static"}`}
+            htmlType="button"
+            type="primary"
+            onClick={hasHeaderActionTarget ? handleHeaderAction : undefined}
+          >
+            {headerAction.label}
+          </Button>
+        )}
       </header>
       <BottomNav activePage={activePage} onChange={handlePageChange} />
 

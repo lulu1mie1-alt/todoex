@@ -1,5 +1,6 @@
 import { Card } from "animal-island-ui";
 import type { Video } from "../types/video";
+import { normalizeBodyPartText } from "../utils/tagOptions";
 
 interface VideoCardProps {
   video: Video;
@@ -15,8 +16,9 @@ function formatPracticeTime(value: string | null) {
 }
 
 function VideoCard({ video, children }: VideoCardProps) {
+  const bodyPart = normalizeBodyPartText(video.bodyPart);
   const detailLine = [
-    video.bodyPart,
+    bodyPart,
     video.duration,
     video.intensity,
     video.equipment,
@@ -26,7 +28,7 @@ function VideoCard({ video, children }: VideoCardProps) {
   return (
     <Card className="video-card collection-card" pattern="app-pink">
       <div className="video-card-top">
-        <span className="body-part-pill">{video.bodyPart}</span>
+        <span className="body-part-pill">{bodyPart}</span>
         <span className="platform-pill">{video.platform}</span>
       </div>
       <p className="video-title-line">

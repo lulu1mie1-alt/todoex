@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Input } from "animal-island-ui";
+import { Checkbox, Collapse, Input, Radio } from "animal-island-ui";
+import DurationPicker from "../components/DurationPicker";
 import VideoCard from "../components/VideoCard";
 import {
   addTagOption,
@@ -14,7 +15,7 @@ import {
 } from "../storage/localStorage";
 import type { Video } from "../types/video";
 import { getDateKey, getNextDateKeys } from "../utils/date";
-import { DURATION_OPTIONS } from "../utils/tagOptions";
+import { normalizeBodyPartList, normalizeBodyPartOption, normalizeBodyPartText } from "../utils/tagOptions";
 
 interface LibraryPageProps {
   videos: Video[];
@@ -53,7 +54,7 @@ function getInitialLibraryFilters(): LibraryFilters {
     const parsed = JSON.parse(raw) as Partial<LibraryFilters>;
     return {
       platform: parsed.platform || "",
-      bodyPart: Array.isArray(parsed.bodyPart) ? parsed.bodyPart : [],
+      bodyPart: Array.isArray(parsed.bodyPart) ? normalizeBodyPartList(parsed.bodyPart) : [],
       duration: parsed.duration || "",
       intensity: parsed.intensity || "",
       equipment: Array.isArray(parsed.equipment) ? parsed.equipment : [],
@@ -70,6 +71,10 @@ function splitTextTags(value: string) {
     .split(/[，,\s、]+/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function splitBodyPartTags(value: string) {
+  return normalizeBodyPartList(splitTextTags(value));
 }
 
 function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
@@ -108,11 +113,12 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
     const keyword = query.trim().toLowerCase();
 
     return videos.filter((video) => {
+      const bodyPart = normalizeBodyPartText(video.bodyPart);
       const searchableText = [
         video.platform,
         video.author,
         video.title,
-        video.bodyPart,
+        bodyPart,
         video.duration,
         video.intensity,
         video.equipment,
@@ -126,7 +132,7 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
       return (
         (!keyword || searchableText.includes(keyword)) &&
         (!filters.platform || video.platform === filters.platform) &&
-        filters.bodyPart.every((item) => video.bodyPart.includes(item)) &&
+        filters.bodyPart.every((item) => bodyPart.includes(normalizeBodyPartOption(item))) &&
         (!filters.duration || video.duration === filters.duration) &&
         (!filters.intensity || video.intensity === filters.intensity) &&
         filters.equipment.every((item) => video.equipment.includes(item)) &&
@@ -164,7 +170,7 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
       author: editDraft.author.trim() || "未知作者",
       title: editDraft.title.trim() || editingVideo.title,
       url: editDraft.url.trim(),
-      bodyPart: editDraft.bodyPart.trim(),
+      bodyPart: normalizeBodyPartText(editDraft.bodyPart),
       equipment: editDraft.equipment.trim(),
       specialTags: editDraft.specialTags,
       note: editDraft.note.trim(),
@@ -207,7 +213,7 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
     if (!nextValue) return;
     addTagOption(group, nextValue);
     setSelectableOptions(getTagOptions());
-    applyValue(nextValue);
+    applyValue(group === "bodyPart" ? normalizeBodyPartOption(nextValue) : nextValue);
     updateCustomInput(group, "");
     setOpenCustomGroup(null);
   }
@@ -251,12 +257,13 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
 
   function updateDraftMultiText(field: "bodyPart" | "equipment", value: string) {
     if (!editDraft) return;
-    const values = splitTextTags(editDraft[field]);
-    const nextValues = values.includes(value)
+    const nextValue = field === "bodyPart" ? normalizeBodyPartOption(value) : value;
+    const values = field === "bodyPart" ? splitBodyPartTags(editDraft[field]) : splitTextTags(editDraft[field]);
+    const nextValues = values.includes(nextValue)
       ? values.length > 1
-        ? values.filter((item) => item !== value)
+        ? values.filter((item) => item !== nextValue)
         : values
-      : [...values, value];
+      : [...values, nextValue];
     updateDraft({ [field]: nextValues.join("、") });
   }
 
@@ -286,15 +293,60 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
         />
       </div>
 
-      <div className="filter-panel">
-        <FilterRow label="平台" options={PLATFORM_OPTIONS} value={filters.platform} onPick={(value) => setSingleFilter("platform", value)} />
-        <FilterRow label="锻炼部位（可多选）" options={selectableOptions.bodyPart} value={filters.bodyPart} onPick={(value) => toggleMultiFilter("bodyPart", value)} multiple />
-        <FilterRow label="时长" options={DURATION_OPTIONS} value={filters.duration} onPick={(value) => setSingleFilter("duration", value)} />
-        <FilterRow label="强度" options={selectableOptions.intensity} value={filters.intensity} onPick={(value) => setSingleFilter("intensity", value)} />
-        <FilterRow label="道具（可多选）" options={selectableOptions.equipment} value={filters.equipment} onPick={(value) => toggleMultiFilter("equipment", value)} multiple />
-        <FilterRow label="训练类型" options={selectableOptions.trainingType} value={filters.trainingType} onPick={(value) => setSingleFilter("trainingType", value)} />
-        <FilterRow label="特色标签（可多选）" options={selectableOptions.specialTags} value={filters.specialTags} onPick={(value) => toggleMultiFilter("specialTags", value)} multiple />
-      </div>
+      <Collapse
+        className="filter-collapse"
+        defaultExpanded
+        question={
+          <div className="filter-collapse-title">
+            <span>筛选条件</span>
+            <strong>{getActiveFilterCount(filters)}</strong>
+          </div>
+        }
+        answer={
+          <div className="filter-panel">
+            <FilterCompactRadioGroup
+              label="平台"
+              options={PLATFORM_OPTIONS}
+              value={filters.platform}
+              onChange={(value) => setSingleFilter("platform", value)}
+            />
+            <FilterCompactCheckboxGroup
+              label="锻炼部位"
+              options={selectableOptions.bodyPart}
+              value={filters.bodyPart}
+              onChange={(values) => setFilters((current) => ({ ...current, bodyPart: values }))}
+            />
+            <FilterCompactDurationGroup
+              value={filters.duration}
+              onChange={(value) => setFilters((current) => ({ ...current, duration: value }))}
+            />
+            <FilterCompactRadioGroup
+              label="强度"
+              options={selectableOptions.intensity}
+              value={filters.intensity}
+              onChange={(value) => setSingleFilter("intensity", value)}
+            />
+            <FilterCompactCheckboxGroup
+              label="道具"
+              options={selectableOptions.equipment}
+              value={filters.equipment}
+              onChange={(values) => setFilters((current) => ({ ...current, equipment: values }))}
+            />
+            <FilterCompactRadioGroup
+              label="训练类型"
+              options={selectableOptions.trainingType}
+              value={filters.trainingType}
+              onChange={(value) => setSingleFilter("trainingType", value)}
+            />
+            <FilterCompactCheckboxGroup
+              label="特色标签"
+              options={selectableOptions.specialTags}
+              value={filters.specialTags}
+              onChange={(values) => setFilters((current) => ({ ...current, specialTags: values }))}
+            />
+          </div>
+        }
+      />
 
       <div className="card-list">
         {videos.length === 0 && <p className="empty-copy">你的小岛还没有训练视频，先导入一个今天想练的吧。</p>}
@@ -338,13 +390,16 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
             <EditChipGroup
               label="锻炼部位"
               options={selectableOptions.bodyPart}
-              value={splitTextTags(editDraft.bodyPart)}
+              value={splitBodyPartTags(editDraft.bodyPart)}
               onChange={(value) => updateDraftMultiText("bodyPart", value)}
               multiple
               trailingAction={renderCustomAction("bodyPart")}
             />
             {renderCustomInput("bodyPart", "写一个锻炼部位", (value) => updateDraftMultiText("bodyPart", value))}
-            <EditChipGroup label="时长" options={DURATION_OPTIONS} value={editDraft.duration} onChange={(duration) => updateDraft({ duration })} scrollable />
+            <div className="chip-group duration-field">
+              <span>时长</span>
+              <DurationPicker value={editDraft.duration} onChange={(duration) => updateDraft({ duration })} />
+            </div>
             <EditChipGroup
               label="强度"
               options={selectableOptions.intensity}
@@ -427,32 +482,170 @@ function LibraryPage({ videos, onVideosChanged }: LibraryPageProps) {
   );
 }
 
-interface FilterRowProps {
-  label: string;
-  options: readonly string[];
-  value: string | string[];
-  onPick: (value: string) => void;
-  multiple?: boolean;
+function getActiveFilterCount(filters: LibraryFilters) {
+  return [
+    filters.platform,
+    filters.duration,
+    filters.intensity,
+    filters.trainingType,
+    ...filters.bodyPart,
+    ...filters.equipment,
+    ...filters.specialTags,
+  ].filter(Boolean).length;
 }
 
-function FilterRow({ label, options, value, onPick, multiple = false }: FilterRowProps) {
+function toStringValues(values: Array<string | number>) {
+  return values.map((value) => String(value));
+}
+
+interface FilterRadioGroupProps {
+  label: string;
+  options: readonly string[];
+  value: string;
+  onChange: (value: string) => void;
+  scrollable?: boolean;
+}
+
+function FilterRadioGroup({ label, options, value, onChange }: FilterRadioGroupProps) {
   return (
-    <div className="filter-row">
+    <div className="filter-row filter-choice-row">
       <span>{label}</span>
-      <div className="filter-scroll">
-        {options.map((option) => {
-          const active = Array.isArray(value) ? value.includes(option) : value === option;
-          return (
-            <button
-              key={option}
-              type="button"
-              className={active ? "filter-chip active" : "filter-chip"}
-              onClick={() => onPick(option)}
-            >
-              {option}{multiple && active ? " ✓" : ""}
-            </button>
-          );
-        })}
+      <Radio
+        className="filter-choice-group"
+        size="middle"
+        value={value}
+        options={[
+          { label: "全部", value: "" },
+          ...options.map((option) => ({ label: option, value: option })),
+        ]}
+        onChange={(nextValue) => onChange(String(nextValue))}
+      />
+    </div>
+  );
+}
+
+interface FilterCheckboxGroupProps {
+  label: string;
+  options: readonly string[];
+  value: string[];
+  onChange: (value: string[]) => void;
+}
+
+function FilterCheckboxGroup({ label, options, value, onChange }: FilterCheckboxGroupProps) {
+  return (
+    <div className="filter-row filter-choice-row">
+      <span>{label}（可多选）</span>
+      <Checkbox
+        className="filter-choice-group"
+        size="middle"
+        value={value}
+        options={options.map((option) => ({ label: option, value: option }))}
+        onChange={(nextValues) => onChange(toStringValues(nextValues))}
+      />
+    </div>
+  );
+}
+
+function FilterCompactRadioGroup({ label, options, value, onChange, scrollable = false }: FilterRadioGroupProps) {
+  const [expanded, setExpanded] = useState(false);
+  const summary = value || `全部${label}`;
+
+  return (
+    <div className="filter-row filter-choice-row filter-combo-row">
+      <span>{label}</span>
+      <div className="filter-combo-shell">
+        <button
+          className="filter-combo-trigger"
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((current) => !current)}
+        >
+          <span>{summary}</span>
+          <b>{expanded ? "收起" : "展开"}</b>
+        </button>
+        {expanded && (
+          <div className="filter-combo-panel">
+            <Radio
+              className={`filter-choice-group filter-combo-options${scrollable ? " filter-combo-options-scroll" : ""}`}
+              size="middle"
+              value={value}
+              options={[
+                { label: "全部", value: "" },
+                ...options.map((option) => ({ label: option, value: option })),
+              ]}
+              onChange={(nextValue) => onChange(String(nextValue))}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FilterCompactDurationGroup({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="filter-row filter-choice-row filter-combo-row">
+      <span>时长</span>
+      <div className="filter-combo-shell">
+        <button
+          className="filter-combo-trigger"
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((current) => !current)}
+        >
+          <span>{value || "全部时长"}</span>
+          <b>{expanded ? "收起" : "展开"}</b>
+        </button>
+        {expanded && (
+          <div className="filter-combo-panel">
+            <DurationPicker value={value} onChange={onChange} allowEmpty />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FilterCompactCheckboxGroup({ label, options, value, onChange }: FilterCheckboxGroupProps) {
+  const [expanded, setExpanded] = useState(false);
+  const selectedPreview = value.slice(0, 2).join("、");
+  const summary = value.length === 0 ? `全部${label}` : `已选 ${value.length} 个`;
+
+  return (
+    <div className="filter-row filter-choice-row filter-combo-row">
+      <span>{label}（可多选）</span>
+      <div className="filter-combo-shell">
+        <button
+          className="filter-combo-trigger"
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((current) => !current)}
+        >
+          <span>{summary}</span>
+          {selectedPreview && <small>{selectedPreview}{value.length > 2 ? "…" : ""}</small>}
+          <b>{expanded ? "收起" : "展开"}</b>
+        </button>
+        {expanded && (
+          <div className="filter-combo-panel">
+            <div className="filter-combo-toolbar">
+              <span>选择标签</span>
+              {value.length > 0 && (
+                <button type="button" onClick={() => onChange([])}>
+                  清空
+                </button>
+              )}
+            </div>
+            <Checkbox
+              className="filter-choice-group filter-combo-options"
+              size="middle"
+              value={value}
+              options={options.map((option) => ({ label: option, value: option }))}
+              onChange={(nextValues) => onChange(toStringValues(nextValues))}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

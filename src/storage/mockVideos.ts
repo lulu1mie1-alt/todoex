@@ -25,7 +25,7 @@ export const mockVideos: Video[] = [
     platform: "小红书",
     author: "梨子肩颈舒缓",
     title: "久坐肩颈放松跟练",
-    bodyPart: "肩颈",
+    bodyPart: "肩背",
     duration: "10min",
     intensity: "低强度",
     equipment: "无器械",

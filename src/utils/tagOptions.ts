@@ -1,29 +1,49 @@
 export const BODY_PART_OPTIONS = [
   "全身",
   "臀腿",
-  "核心",
-  "腹部",
-  "肩颈",
-  "背部",
+  "核心腰腹",
+  "肩背",
   "手臂",
-  "腰腹",
   "拉伸放松",
 ] as const;
 
-export const DURATION_OPTIONS = [
-  "5min",
-  "10min",
-  "15min",
-  "20min",
-  "25min",
-  "30min",
-  "35min",
-  "40min",
-  "45min",
-  "50min",
-  "55min",
-  "60min",
-] as const;
+const BODY_PART_ALIASES: Record<string, string> = {
+  核心: "核心腰腹",
+  腹部: "核心腰腹",
+  腰腹: "核心腰腹",
+  肩颈: "肩背",
+  背部: "肩背",
+};
+
+export function normalizeBodyPartOption(value: string) {
+  return BODY_PART_ALIASES[value.trim()] ?? value.trim();
+}
+
+export function normalizeBodyPartList(values: readonly string[]) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => normalizeBodyPartOption(value))
+        .filter(Boolean),
+    ),
+  );
+}
+
+export function normalizeBodyPartText(value: string) {
+  return normalizeBodyPartList(value.split(/[，,\s、]+/)).join("、");
+}
+
+export const DURATION_OPTIONS = Array.from({ length: 61 }, (_, minute) => `${minute}min`);
+
+export function parseDurationValue(value: string) {
+  const match = value.match(/^(\d{1,2})min$/);
+  if (!match) return 0;
+  return Math.min(60, Math.max(0, Number(match[1])));
+}
+
+export function formatDurationValue(value: number) {
+  return `${Math.min(60, Math.max(0, Math.round(value)))}min`;
+}
 
 export const INTENSITY_OPTIONS = ["低强度", "中强度", "中高强度", "高强度"] as const;
 

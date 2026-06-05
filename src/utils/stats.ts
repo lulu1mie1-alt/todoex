@@ -1,5 +1,6 @@
 import type { CheckinRecord } from "../types/video";
 import { getDateKey, getRecentDateKeys } from "./date";
+import { normalizeBodyPartText, parseDurationValue } from "./tagOptions";
 
 export interface TrainingTypeCount {
   label: string;
@@ -24,12 +25,7 @@ export interface WeeklyStats {
 }
 
 export function parseDurationToMinutes(duration: string): number {
-  if (duration === "5min") return 5;
-  if (duration === "10min") return 10;
-  if (duration === "15min") return 15;
-  if (duration === "20min") return 20;
-  if (duration === "30min+") return 30;
-  return 0;
+  return parseDurationValue(duration);
 }
 
 export function sortRecordsByCompletedAtDesc(records: CheckinRecord[]) {
@@ -89,7 +85,7 @@ export function buildWeeklyStats(records: CheckinRecord[]): WeeklyStats {
   const dateKeys = getRecentDateKeys(7);
   const weeklyRecords = filterRecordsWithinRecentDays(records, 7);
   const activeDateKeys = new Set(weeklyRecords.map((record) => getDateKey(new Date(record.completedAt))));
-  const topBodyPart = getTopValue(weeklyRecords, (record) => record.bodyPart)?.[0] ?? "";
+  const topBodyPart = getTopValue(weeklyRecords, (record) => normalizeBodyPartText(record.bodyPart))?.[0] ?? "";
   const totalCount = weeklyRecords.length;
   const summary = createWeeklySummary(totalCount, topBodyPart);
 

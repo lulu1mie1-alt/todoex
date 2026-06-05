@@ -1,5 +1,6 @@
 import type { Video } from "../types/video";
 import { detectPlatform } from "./platform";
+import { normalizeBodyPartList } from "./tagOptions";
 
 export interface VideoImportForm {
   shareText: string;
@@ -36,6 +37,7 @@ export function extractCandidateTitle(text: string, url: string): string {
 
 export function createVideoFromForm(form: VideoImportForm): Video {
   const now = new Date().toISOString();
+  const bodyPart = normalizeBodyPartList(form.bodyPart).join("、");
 
   return {
     id: `video-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -43,7 +45,7 @@ export function createVideoFromForm(form: VideoImportForm): Video {
     url: form.url.trim(),
     author: form.author.trim() || "未知作者",
     title: form.title.trim(),
-    bodyPart: form.bodyPart.join("、"),
+    bodyPart,
     duration: form.duration,
     intensity: form.intensity,
     equipment: form.equipment.join("、"),

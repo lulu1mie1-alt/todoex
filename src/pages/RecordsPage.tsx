@@ -7,6 +7,7 @@ import {
   filterRecordsWithinRecentDays,
   sortRecordsByCompletedAtDesc,
 } from "../utils/stats";
+import { normalizeBodyPartText } from "../utils/tagOptions";
 
 interface RecordsPageProps {
   videos: Video[];
@@ -154,7 +155,7 @@ function RecordsPage({ videos: _videos }: RecordsPageProps) {
 
 function RecordCard({ record }: { record: CheckinRecord }) {
   const tagText = record.specialTags.length > 0 ? record.specialTags.join("、") : "无特色标签";
-  const detailText = [record.bodyPart, record.duration, record.intensity, record.equipment, tagText].join("｜");
+  const detailText = [normalizeBodyPartText(record.bodyPart), record.duration, record.intensity, record.equipment, tagText].join("｜");
 
   return (
     <article className="record-card">

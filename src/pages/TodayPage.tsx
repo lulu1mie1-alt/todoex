@@ -13,6 +13,7 @@ import {
 } from "../storage/localStorage";
 import type { PlanItem, Video } from "../types/video";
 import { getDateKey } from "../utils/date";
+import { normalizeBodyPartText } from "../utils/tagOptions";
 
 interface TodayPageProps {
   videos: Video[];
@@ -31,7 +32,8 @@ const quickMoodLabels: Record<QuickMood, string> = {
 };
 
 function scoreVideo(video: Video, mood: QuickMood) {
-  const text = [video.bodyPart, video.duration, video.intensity, video.trainingType, ...video.specialTags].join(" ");
+  const bodyPart = normalizeBodyPartText(video.bodyPart);
+  const text = [bodyPart, video.duration, video.intensity, video.trainingType, ...video.specialTags].join(" ");
 
   if (mood === "easy") {
     return Number(text.includes("低强度")) + Number(text.includes("低能量可练")) + Number(text.includes("拉伸")) + Number(text.includes("睡前放松"));
@@ -40,16 +42,17 @@ function scoreVideo(video: Video, mood: QuickMood) {
     return Number(text.includes("有氧")) + Number(text.includes("高强度")) + Number(text.includes("暴汗预警")) + Number(text.includes("心率强者"));
   }
   if (mood === "stretch") {
-    return Number(["拉伸", "瑜伽", "放松"].includes(video.trainingType)) + Number(video.bodyPart.includes("肩颈")) + Number(video.bodyPart.includes("拉伸放松"));
+    return Number(["拉伸", "瑜伽", "放松"].includes(video.trainingType)) + Number(bodyPart.includes("肩背")) + Number(bodyPart.includes("拉伸放松"));
   }
   if (mood === "legs") {
-    return Number(video.bodyPart.includes("臀腿"));
+    return Number(bodyPart.includes("臀腿"));
   }
   return Number(video.duration === "5min") + Number(video.duration === "10min");
 }
 
 function matchesQuickMood(video: Video, mood: QuickMood) {
-  const text = [video.bodyPart, video.duration, video.intensity, video.trainingType, ...video.specialTags].join(" ");
+  const bodyPart = normalizeBodyPartText(video.bodyPart);
+  const text = [bodyPart, video.duration, video.intensity, video.trainingType, ...video.specialTags].join(" ");
 
   if (mood === "easy") {
     return text.includes("低强度") || text.includes("低能量可练") || text.includes("拉伸") || text.includes("睡前放松");
@@ -58,10 +61,10 @@ function matchesQuickMood(video: Video, mood: QuickMood) {
     return text.includes("有氧") || text.includes("高强度") || text.includes("暴汗预警") || text.includes("心率强者");
   }
   if (mood === "stretch") {
-    return ["拉伸", "瑜伽", "放松"].includes(video.trainingType) || video.bodyPart.includes("肩颈") || video.bodyPart.includes("拉伸放松");
+    return ["拉伸", "瑜伽", "放松"].includes(video.trainingType) || bodyPart.includes("肩背") || bodyPart.includes("拉伸放松");
   }
   if (mood === "legs") {
-    return video.bodyPart.includes("臀腿");
+    return bodyPart.includes("臀腿");
   }
   return video.duration === "5min" || video.duration === "10min";
 }
@@ -72,7 +75,7 @@ function buildCheckinRecord(video: Video) {
     videoId: video.id,
     videoTitle: video.title,
     author: video.author,
-    bodyPart: video.bodyPart,
+    bodyPart: normalizeBodyPartText(video.bodyPart),
     duration: video.duration,
     intensity: video.intensity,
     equipment: video.equipment,
@@ -82,6 +85,14 @@ function buildCheckinRecord(video: Video) {
     mood: "完成今日计划",
     note: "",
   };
+}
+
+function formatStampTime(value: string | null) {
+  if (!value) return "刚刚";
+  return new Date(value).toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
@@ -227,7 +238,10 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
                   />
                 </label>
                 <VideoCard video={video}>
-                  <div className={item.completed ? "plan-status stamp-badge done" : "plan-status stamp-badge"}>{item.completed ? "已完成" : "待完成"}</div>
+                  <div className={item.completed ? "plan-status stamp-badge done" : "plan-status stamp-badge"}>
+                    <span>{item.completed ? "已完成" : "待完成"}</span>
+                    {item.completed && <small>{formatStampTime(item.completedAt)}</small>}
+                  </div>
                   <div className="plan-actions">
                     <button type="button" disabled={item.completed || alreadyCheckedIn || !video.url} onClick={() => openTraining(video)}>
                       去跟练

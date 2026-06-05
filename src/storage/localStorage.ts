@@ -6,6 +6,8 @@ import {
   INTENSITY_OPTIONS,
   SPECIAL_TAG_OPTIONS,
   TRAINING_TYPE_OPTIONS,
+  normalizeBodyPartList,
+  normalizeBodyPartOption,
 } from "../utils/tagOptions";
 
 const VIDEO_STORAGE_KEY = "fitnessIsland.videos";
@@ -71,6 +73,10 @@ function normalizeTextOptions(value: unknown): string[] {
 
 function mergeOptions(baseOptions: readonly string[], customOptions: string[]) {
   return Array.from(new Set([...baseOptions, ...customOptions]));
+}
+
+function mergeBodyPartOptions(customOptions: string[]) {
+  return normalizeBodyPartList([...BODY_PART_OPTIONS, ...customOptions]);
 }
 
 function getStoredTagOptions(): StoredTagOptions {
@@ -217,7 +223,7 @@ export function getTagOptions(): CustomTagOptions {
   const stored = getStoredTagOptions();
 
   return {
-    bodyPart: mergeOptions(BODY_PART_OPTIONS, stored.bodyPart),
+    bodyPart: mergeBodyPartOptions(stored.bodyPart),
     intensity: mergeOptions(INTENSITY_OPTIONS, stored.intensity),
     equipment: mergeOptions(EQUIPMENT_OPTIONS, stored.equipment),
     trainingType: mergeOptions(TRAINING_TYPE_OPTIONS, stored.trainingType),
@@ -226,7 +232,7 @@ export function getTagOptions(): CustomTagOptions {
 }
 
 export function addTagOption(group: CustomTagGroup, value: string) {
-  const nextValue = value.trim();
+  const nextValue = group === "bodyPart" ? normalizeBodyPartOption(value) : value.trim();
   if (!nextValue) return;
 
   const stored = getStoredTagOptions();
