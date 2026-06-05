@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import VideoCard from "../components/VideoCard";
 import {
   addCheckinRecord,
@@ -6,68 +6,72 @@ import {
   getCheckinRecords,
   getPlanByDate,
   getVideos,
-  isVideoInPlan,
   removeVideoFromPlan,
   togglePlanItemCompleted,
   updateVideo,
 } from "../storage/localStorage";
 import type { PlanItem, Video } from "../types/video";
 import { getDateKey } from "../utils/date";
+import {
+  buildRecommendationRoute,
+  type AvailableMinutes,
+  type RecommendationRoute,
+  type RouteType,
+  type TodayBodyPart,
+  type TodayEnergy,
+  type TodayLimitation,
+  type TodayStatus,
+} from "../utils/recommendationEngine";
 import { normalizeBodyPartText } from "../utils/tagOptions";
 
 interface TodayPageProps {
   videos: Video[];
   onVideosChanged: () => void;
   onGoImport: () => void;
+  plannerRequest: number;
 }
 
-type QuickMood = "easy" | "sweat" | "stretch" | "legs" | "ten";
+type PlannerStep = "status" | "result";
 
-const quickMoodLabels: Record<QuickMood, string> = {
-  easy: "我今天想轻松一点",
-  sweat: "我想快速出汗",
-  stretch: "我想拉伸放松",
-  legs: "我想练臀腿",
-  ten: "我只有 10 分钟",
+const energyOptions: Array<{ value: TodayEnergy; label: string; copy: string }> = [
+  { value: "low", label: "低能量", copy: "小岛维护日" },
+  { value: "normal", label: "普通", copy: "稳稳建设" },
+  { value: "good", label: "状态不错", copy: "完整路线" },
+  { value: "sweaty", label: "想暴汗", copy: "燃脂派对" },
+];
+
+const timeOptions: AvailableMinutes[] = [10, 20, 30, 40, 50, 60];
+
+const bodyPartOptions: Array<{ value: TodayBodyPart; label: string }> = [
+  { value: "auto", label: "系统安排" },
+  { value: "fullBody", label: "全身" },
+  { value: "shoulderNeck", label: "肩颈" },
+  { value: "abs", label: "腹部" },
+  { value: "glutesLegs", label: "臀腿" },
+  { value: "stretchRelax", label: "拉伸放松" },
+];
+
+const limitationOptions: Array<{ value: TodayLimitation; label: string }> = [
+  { value: "noJump", label: "无跳跃" },
+  { value: "kneeFriendly", label: "膝盖友好" },
+  { value: "periodFriendly", label: "经期友好" },
+  { value: "noEquipment", label: "无器械" },
+  { value: "bedtimeRelax", label: "睡前放松" },
+];
+
+const routeTypeLabels: Record<RouteType, string> = {
+  low_energy: "低能量维护路线",
+  default: "今日标准建设路线",
+  active: "状态不错建设路线",
+  sweaty: "小岛燃脂派对路线",
 };
 
-function scoreVideo(video: Video, mood: QuickMood) {
-  const bodyPart = normalizeBodyPartText(video.bodyPart);
-  const text = [bodyPart, video.duration, video.intensity, video.trainingType, ...video.specialTags].join(" ");
-
-  if (mood === "easy") {
-    return Number(text.includes("低强度")) + Number(text.includes("低能量可练")) + Number(text.includes("拉伸")) + Number(text.includes("睡前放松"));
-  }
-  if (mood === "sweat") {
-    return Number(text.includes("有氧")) + Number(text.includes("高强度")) + Number(text.includes("暴汗预警")) + Number(text.includes("心率强者"));
-  }
-  if (mood === "stretch") {
-    return Number(["拉伸", "瑜伽", "放松"].includes(video.trainingType)) + Number(bodyPart.includes("肩背")) + Number(bodyPart.includes("拉伸放松"));
-  }
-  if (mood === "legs") {
-    return Number(bodyPart.includes("臀腿"));
-  }
-  return Number(video.duration === "5min") + Number(video.duration === "10min");
-}
-
-function matchesQuickMood(video: Video, mood: QuickMood) {
-  const bodyPart = normalizeBodyPartText(video.bodyPart);
-  const text = [bodyPart, video.duration, video.intensity, video.trainingType, ...video.specialTags].join(" ");
-
-  if (mood === "easy") {
-    return text.includes("低强度") || text.includes("低能量可练") || text.includes("拉伸") || text.includes("睡前放松");
-  }
-  if (mood === "sweat") {
-    return text.includes("有氧") || text.includes("高强度") || text.includes("暴汗预警") || text.includes("心率强者");
-  }
-  if (mood === "stretch") {
-    return ["拉伸", "瑜伽", "放松"].includes(video.trainingType) || bodyPart.includes("肩背") || bodyPart.includes("拉伸放松");
-  }
-  if (mood === "legs") {
-    return bodyPart.includes("臀腿");
-  }
-  return video.duration === "5min" || video.duration === "10min";
-}
+const defaultTodayStatus: TodayStatus = {
+  energy: "normal",
+  availableMinutes: 30,
+  bodyPart: "auto",
+  limitations: [],
+};
 
 function buildCheckinRecord(video: Video) {
   return {
@@ -95,14 +99,29 @@ function formatStampTime(value: string | null) {
   });
 }
 
-function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
+function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: TodayPageProps) {
   const today = getDateKey();
-  const [quickMood, setQuickMood] = useState<QuickMood>("easy");
   const [planVersion, setPlanVersion] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [checkinDialogOpen, setCheckinDialogOpen] = useState(false);
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [plannerStep, setPlannerStep] = useState<PlannerStep>("status");
+  const [todayStatus, setTodayStatus] = useState<TodayStatus>(defaultTodayStatus);
+  const [routeVariant, setRouteVariant] = useState(0);
+  const handledPlannerRequestRef = useRef(plannerRequest);
   const plan = useMemo(() => getPlanByDate(today), [today, planVersion]);
   const checkinRecords = useMemo(() => getCheckinRecords(), [planVersion]);
+  const currentRoute = useMemo<RecommendationRoute>(
+    () =>
+      buildRecommendationRoute({
+        videos,
+        checkinRecords,
+        todayStatus,
+        todayPlan: plan,
+        variant: routeVariant,
+      }),
+    [checkinRecords, plan, routeVariant, todayStatus, videos],
+  );
   const completedTodayIds = checkinRecords
     .filter((record) => getDateKey(new Date(record.completedAt)) === today)
     .map((record) => record.videoId);
@@ -118,33 +137,57 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
   const heroTitle = alreadyCheckedIn ? "今天的小岛已经亮起来了" : "今天的小岛，慢慢亮起来";
   const heroCopy = alreadyCheckedIn
     ? `你完成了今日计划的 ${totalCount} 个小任务。今天的你，已经认真照顾过自己了。`
-    : `打卡进度（${completedCount}/${totalCount}）。把计划里的小任务逐个完成，就可以点亮今日小岛。`;
-
-  const recommendations = useMemo(() => {
-    return [...videos]
-      .filter((video) => matchesQuickMood(video, quickMood))
-      .sort((a, b) => scoreVideo(b, quickMood) - scoreVideo(a, quickMood))
-      .slice(0, 3);
-  }, [quickMood, videos]);
+    : `打卡进度：${completedCount}/${totalCount}。把计划里的小任务逐个完成，就可以点亮今日小岛。`;
 
   function refreshPlan(message?: string) {
     if (message) setFeedback(message);
     setPlanVersion((version) => version + 1);
   }
 
-  function addTodayPlan(video: Video) {
-    addVideoToPlan(today, video.id);
-    refreshPlan("已放进今天的小岛计划。");
+  function openPlanner() {
+    setPlannerOpen(true);
+    setPlannerStep("status");
   }
 
-  function arrangeTodayPlan() {
-    const nextVideo = recommendations.find((video) => !isVideoInPlan(today, video.id));
-    if (!nextVideo) {
-      refreshPlan("当前推荐已经都在今日计划里啦。");
+  function closePlanner() {
+    setPlannerOpen(false);
+  }
+
+  function updateStatus(updates: Partial<TodayStatus>) {
+    setTodayStatus((status) => ({ ...status, ...updates }));
+  }
+
+  function toggleLimitation(limitation: TodayLimitation) {
+    setTodayStatus((status) => {
+      const limitations = status.limitations.includes(limitation)
+        ? status.limitations.filter((item) => item !== limitation)
+        : [...status.limitations, limitation];
+      return { ...status, limitations };
+    });
+  }
+
+  function generateRoute() {
+    setRouteVariant((variant) => variant + 1);
+    setPlannerStep("result");
+  }
+
+  function addRouteToTodayPlan() {
+    if (currentRoute.recommendedVideos.length === 0) {
+      setFeedback("还没有可加入的路线，先导入几个训练视频吧。");
       return;
     }
 
-    addTodayPlan(nextVideo);
+    currentRoute.recommendedVideos.forEach((video) => {
+      addVideoToPlan(today, video.id);
+    });
+
+    setPlanVersion((version) => version + 1);
+    setFeedback(
+      totalCount > 0
+        ? "今日计划里已经有训练任务啦，可以继续添加这条路线，也可以换一条路线。这条路线已继续加入。"
+        : "小岛管理员已经把今日路线放进计划啦。",
+    );
+    closePlanner();
   }
 
   function openTraining(video: Video) {
@@ -200,6 +243,13 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
     }
   }, [allCompleted, alreadyCheckedIn, planVersion]);
 
+  useEffect(() => {
+    if (plannerRequest !== handledPlannerRequestRef.current) {
+      handledPlannerRequestRef.current = plannerRequest;
+      openPlanner();
+    }
+  }, [plannerRequest]);
+
   return (
     <section className="page-stack">
       <div className="panel hero-panel island-hero">
@@ -210,7 +260,9 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
         </div>
         <div className="hero-island-status" aria-label={`今日打卡进度 ${completedCount}/${totalCount}`}>
           <span>今日进度</span>
-          <strong>{completedCount}/{totalCount}</strong>
+          <strong>
+            {completedCount}/{totalCount}
+          </strong>
           <div className="island-progress-track">
             <i style={{ width: totalCount > 0 ? `${Math.round((completedCount / totalCount) * 100)}%` : "0%" }} />
           </div>
@@ -222,10 +274,16 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
       <div className="panel notice-board today-board">
         <div className="section-header">
           <h2>今日计划</h2>
-          <span>（{completedCount}/{totalCount}）</span>
+          <span>
+            ({completedCount}/{totalCount})
+          </span>
         </div>
         <div className="card-list">
-          {plannedItems.length === 0 && <p className="empty-copy">今天的小岛还空着，先从推荐或视频库加入一个想练的视频吧。</p>}
+          {plannedItems.length === 0 && (
+            <p className="empty-copy">
+              今天的小岛还空着，可以让小岛管理员先帮你安排一条路线，也可以从视频库加入想练的视频。
+            </p>
+          )}
           {plannedItems.map(({ item, video }) => (
             <div key={item.id} className={item.completed ? "plan-todo-row quest-card completed" : "plan-todo-row quest-card"}>
               <div className="plan-todo-foreground">
@@ -256,9 +314,151 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
           ))}
         </div>
         <button className="primary-button checkin-button settlement-button" type="button" disabled={totalCount === 0 || alreadyCheckedIn} onClick={completeTodayCheckin}>
-          {alreadyCheckedIn ? "今日小岛已点亮" : `打卡进度（${completedCount}/${totalCount}）`}
+          {alreadyCheckedIn ? "今日小岛已点亮" : `打卡进度：${completedCount}/${totalCount}`}
         </button>
       </div>
+
+      {plannerOpen && (
+        <div className="modal-backdrop planner-backdrop" role="dialog" aria-modal="true" aria-label={plannerStep === "status" ? "今天想让小岛怎么安排？" : "小岛管理员今日路线"}>
+          <div className="planner-modal">
+            {plannerStep === "status" ? (
+              <>
+                <div className="planner-modal-header">
+                  <p className="section-kicker">Island Planner</p>
+                  <h2>今天想让小岛怎么安排？</h2>
+                  <p>告诉管理员今天的身体状态，它会按你的时间和限制安排一条可完成的路线。</p>
+                </div>
+
+                <div className="planner-field">
+                  <span>今日能量</span>
+                  <div className="planner-choice-grid energy-grid">
+                    {energyOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        className={todayStatus.energy === option.value ? "planner-chip active" : "planner-chip"}
+                        type="button"
+                        onClick={() => updateStatus({ energy: option.value })}
+                      >
+                        <strong>{option.label}</strong>
+                        <small>{option.copy}</small>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="planner-field">
+                  <span>可用时间</span>
+                  <div className="planner-choice-grid time-grid">
+                    {timeOptions.map((minutes) => (
+                      <button
+                        key={minutes}
+                        className={todayStatus.availableMinutes === minutes ? "planner-chip active" : "planner-chip"}
+                        type="button"
+                        onClick={() => updateStatus({ availableMinutes: minutes })}
+                      >
+                        {minutes}min
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="planner-field">
+                  <span>想练部位</span>
+                  <div className="planner-choice-grid body-grid">
+                    {bodyPartOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        className={todayStatus.bodyPart === option.value ? "planner-chip active" : "planner-chip"}
+                        type="button"
+                        onClick={() => updateStatus({ bodyPart: option.value })}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="planner-field">
+                  <span>今日限制</span>
+                  <div className="planner-choice-grid body-grid">
+                    {limitationOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        className={todayStatus.limitations.includes(option.value) ? "planner-chip multi active" : "planner-chip multi"}
+                        type="button"
+                        onClick={() => toggleLimitation(option.value)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="planner-modal-actions">
+                  <button className="primary-button planner-generate-button" type="button" onClick={generateRoute}>
+                    生成今日路线
+                  </button>
+                  <button className="text-button" type="button" onClick={closePlanner}>
+                    取消
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="planner-modal-header route-header">
+                  <p className="section-kicker">Route</p>
+                  <h2>小岛管理员今日路线</h2>
+                  <span className="route-type-pill">{routeTypeLabels[currentRoute.routeType]}</span>
+                </div>
+
+                {totalCount > 0 && (
+                  <p className="planner-notice">
+                    今日计划里已经有训练任务啦，可以继续添加这条路线，也可以换一条路线。
+                  </p>
+                )}
+                {currentRoute.notice && <p className="planner-notice">{currentRoute.notice}</p>}
+
+                <div className="route-copy-card">
+                  <p>{currentRoute.reason}</p>
+                  <strong>{currentRoute.encouragement}</strong>
+                </div>
+
+                <div className="route-video-list">
+                  {currentRoute.recommendedVideos.length === 0 && (
+                    <div className="empty-copy">
+                      <p>还没有可推荐的视频，先导入几个训练视频，小岛管理员就能开工啦。</p>
+                      <button className="primary-button" type="button" onClick={onGoImport}>
+                        去导入视频
+                      </button>
+                    </div>
+                  )}
+                  {currentRoute.recommendedVideos.map((video, index) => (
+                    <div key={video.id} className="route-video-item">
+                      <span className="route-step-badge">任务 {index + 1}</span>
+                      <VideoCard video={video} />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="planner-modal-actions route-actions">
+                  <button className="primary-button planner-generate-button" type="button" disabled={currentRoute.recommendedVideos.length === 0} onClick={addRouteToTodayPlan}>
+                    加入今日计划
+                  </button>
+                  <button className="text-button" type="button" onClick={generateRoute}>
+                    换一条路线
+                  </button>
+                  <button className="text-button" type="button" onClick={() => setPlannerStep("status")}>
+                    返回调整状态
+                  </button>
+                  <button className="text-button" type="button" onClick={closePlanner}>
+                    关闭
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {checkinDialogOpen && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="今日打卡完成">
@@ -272,44 +472,6 @@ function TodayPage({ videos, onVideosChanged, onGoImport }: TodayPageProps) {
           </div>
         </div>
       )}
-
-      <div className="panel recommendation-board">
-        <div className="section-header">
-          <h2>今日推荐</h2>
-          <button className="helper-action" type="button" onClick={arrangeTodayPlan}>
-            帮我安排
-          </button>
-        </div>
-        <div className="quick-grid">
-          {(Object.keys(quickMoodLabels) as QuickMood[]).map((mood) => (
-            <button key={mood} className={quickMood === mood ? "quick-chip active" : "quick-chip"} type="button" onClick={() => setQuickMood(mood)}>
-              {quickMoodLabels[mood]}
-            </button>
-          ))}
-        </div>
-        <div className="card-list">
-          {recommendations.length === 0 && (
-            <div className="empty-copy">
-              <p>还没有相关训练，快去添加吧~</p>
-              <button className="primary-button" type="button" onClick={onGoImport}>
-                去导入视频
-              </button>
-            </div>
-          )}
-          {recommendations.map((video) => (
-            <VideoCard key={video.id} video={video}>
-              <button
-                className="primary-button"
-                type="button"
-                disabled={isVideoInPlan(today, video.id)}
-                onClick={() => addTodayPlan(video)}
-              >
-                {isVideoInPlan(today, video.id) ? "已在今日计划" : "加入今日计划"}
-              </button>
-            </VideoCard>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }

@@ -20,7 +20,7 @@ const pageTitles: Record<AppPage, string> = {
 };
 
 const headerActions: Partial<Record<AppPage, { label: string; target?: AppPage }>> = {
-  today: { label: "替我安排" },
+  today: { label: "小岛管理员帮我安排" },
   library: { label: "投递", target: "import" },
   records: { label: "导出", target: "settings" },
 };
@@ -36,6 +36,7 @@ function getInitialActivePage(): AppPage {
 function App() {
   const [activePage, setActivePage] = useState<AppPage>(getInitialActivePage);
   const [savedVideos, setSavedVideos] = useState(() => getVideos());
+  const [todayPlannerRequest, setTodayPlannerRequest] = useState(0);
   const videos = [...savedVideos, ...mockVideos];
 
   function refreshSavedVideos() {
@@ -83,6 +84,11 @@ function App() {
   }
 
   function handleHeaderAction() {
+    if (activePage === "today") {
+      setTodayPlannerRequest((request) => request + 1);
+      return;
+    }
+
     const targetPage = headerActions[activePage]?.target;
     if (targetPage) {
       handlePageChange(targetPage);
@@ -90,7 +96,7 @@ function App() {
   }
 
   const headerAction = headerActions[activePage];
-  const hasHeaderActionTarget = Boolean(headerAction?.target);
+  const hasHeaderAction = activePage === "today" || Boolean(headerAction?.target);
 
   return (
     <div className={`app-shell page-${activePage}`}>
@@ -116,10 +122,10 @@ function App() {
         </div>
         {headerAction && (
           <Button
-            className={`page-chip page-chip-action${hasHeaderActionTarget ? "" : " page-chip-static"}`}
+            className={`page-chip page-chip-action${hasHeaderAction ? "" : " page-chip-static"}`}
             htmlType="button"
             type="primary"
-            onClick={hasHeaderActionTarget ? handleHeaderAction : undefined}
+            onClick={hasHeaderAction ? handleHeaderAction : undefined}
           >
             {headerAction.label}
           </Button>
@@ -133,6 +139,7 @@ function App() {
             videos={savedVideos}
             onVideosChanged={refreshSavedVideos}
             onGoImport={() => handlePageChange("import")}
+            plannerRequest={todayPlannerRequest}
           />
         )}
         {activePage === "library" && <LibraryPage videos={savedVideos} onVideosChanged={refreshSavedVideos} />}
