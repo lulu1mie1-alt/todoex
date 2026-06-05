@@ -438,7 +438,7 @@ interface ChipButtonProps {
 }
 
 function ChipButton({ active, deletable, label, onClick, onDelete }: ChipButtonProps) {
-  const longPressTimer = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const longPressTimer = useRef<number | null>(null);
   const longPressed = useRef(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
 
