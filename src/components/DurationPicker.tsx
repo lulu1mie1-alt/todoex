@@ -1,35 +1,35 @@
+import { useState } from "react";
 import { formatDurationValue, parseDurationValue } from "../utils/tagOptions";
 
 interface DurationPickerProps {
   value: string;
   onChange: (value: string) => void;
   allowEmpty?: boolean;
+  variant?: "compact" | "panel";
 }
 
 const TENS_OPTIONS = [0, 1, 2, 3, 4, 5, 6];
 const ONES_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-function DurationPicker({ value, onChange, allowEmpty = false }: DurationPickerProps) {
+function DurationPicker({ value, onChange, allowEmpty = false, variant = "compact" }: DurationPickerProps) {
+  const [expanded, setExpanded] = useState(false);
   const minute = parseDurationValue(value);
   const tens = Math.floor(minute / 10);
   const ones = minute % 10;
+  const summary = allowEmpty && !value ? "全部时长" : formatDurationValue(minute);
 
   function updateDuration(nextTens: number, nextOnes: number) {
     const nextMinute = nextTens === 6 ? 60 : nextTens * 10 + nextOnes;
     onChange(formatDurationValue(nextMinute));
   }
 
-  return (
-    <div className="duration-picker">
+  const pickerPanel = (
+    <div className="duration-picker-panel">
       {allowEmpty && (
         <button className={!value ? "duration-clear active" : "duration-clear"} type="button" onClick={() => onChange("")}>
           全部时长
         </button>
       )}
-      <div className="duration-display" aria-live="polite">
-        <strong>{allowEmpty && !value ? "全部" : formatDurationValue(minute)}</strong>
-        <span>{allowEmpty && !value ? "不限时间" : "已选时长"}</span>
-      </div>
       <div className="duration-digit-row">
         <span>十位</span>
         <div className="duration-digit-strip" role="group" aria-label="时长十位">
@@ -64,6 +64,25 @@ function DurationPicker({ value, onChange, allowEmpty = false }: DurationPickerP
           })}
         </div>
       </div>
+    </div>
+  );
+
+  if (variant === "panel") {
+    return <div className="duration-picker">{pickerPanel}</div>;
+  }
+
+  return (
+    <div className="duration-picker">
+      <button
+        className="filter-combo-trigger duration-trigger"
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <span>{summary}</span>
+        <b>{expanded ? "收起" : "展开"}</b>
+      </button>
+      {expanded && pickerPanel}
     </div>
   );
 }

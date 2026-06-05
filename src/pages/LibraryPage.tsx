@@ -600,7 +600,7 @@ function FilterCompactDurationGroup({ value, onChange }: { value: string; onChan
         </button>
         {expanded && (
           <div className="filter-combo-panel">
-            <DurationPicker value={value} onChange={onChange} allowEmpty />
+            <DurationPicker value={value} onChange={onChange} allowEmpty variant="panel" />
           </div>
         )}
       </div>
