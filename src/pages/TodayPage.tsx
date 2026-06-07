@@ -24,6 +24,7 @@ import {
 } from "../utils/recommendationEngine";
 import StickerIcon from "../components/StickerIcon";
 import { buildCheckinFeedback, type CheckinFeedback } from "../utils/stickerUtils";
+import { getDailyTrainingSummary } from "../utils/stats";
 import { normalizeBodyPartText } from "../utils/tagOptions";
 
 interface TodayPageProps {
@@ -216,6 +217,7 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
   function completeTodayCheckin() {
     if (alreadyCheckedIn) return;
     const storedVideos = getVideos();
+    const hadCheckinToday = completedTodayIds.length > 0;
     const itemsToCheckIn = plannedItems.filter(
       ({ item, video }) => item.completed && !completedTodayIds.includes(video.id),
     );
@@ -241,16 +243,35 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
       completedVideos.push(storedVideo);
     });
 
-    setCheckinFeedback(
-      buildCheckinFeedback({
-        completedVideos,
-        routeType: currentRoute.routeType,
-        todayEnergy: todayStatus.energy,
-      }),
-    );
+    if (completedVideos.length === 0) {
+      setCheckinFeedback(null);
+      setCheckinDialogOpen(false);
+      refreshPlan("训练内容暂时没有写入成功，可以稍后再试一次。");
+      return;
+    }
+
+    const dailySummary = getDailyTrainingSummary(today, getCheckinRecords(), getVideos());
+    const nextFeedback = buildCheckinFeedback({
+      completedVideos,
+      routeType: currentRoute.routeType,
+      todayEnergy: todayStatus.energy,
+    });
+
+    setCheckinFeedback({
+      ...nextFeedback,
+      title: hadCheckinToday ? "今日小岛继续营业成功！" : nextFeedback.title,
+      managerCopy: hadCheckinToday ? "新的训练已加入今天的小岛记录。今天又多点亮了一块训练区。" : nextFeedback.managerCopy,
+      taskCount: dailySummary.completedCount,
+      totalMinutes: dailySummary.totalDuration,
+      isLowEnergy: nextFeedback.isLowEnergy || dailySummary.isLowEnergy,
+    });
     onVideosChanged();
     setCheckinDialogOpen(true);
-    refreshPlan("今天的小岛点亮成功，贴纸已经送到公告板啦。");
+    refreshPlan(
+      hadCheckinToday
+        ? "今日小岛继续营业成功，新的训练已经写进今日营业日志。"
+        : "今天的小岛点亮成功，贴纸已经送到公告板啦。",
+    );
   }
 
   useEffect(() => {
@@ -495,8 +516,8 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
                   </div>
                 </div>
                 <div className="checkin-summary-card">
-                  <span>今日完成 {checkinFeedback.taskCount} 个训练任务</span>
-                  {checkinFeedback.totalMinutes > 0 && <span>累计约 {checkinFeedback.totalMinutes} 分钟</span>}
+                  <span>今天累计完成 {checkinFeedback.taskCount} 个训练任务</span>
+                  {checkinFeedback.totalMinutes > 0 && <span>今日累计训练约 {checkinFeedback.totalMinutes} 分钟</span>}
                   <span>路线类型：{checkinFeedback.routeLabel}</span>
                   {checkinFeedback.isLowEnergy && <strong>低能量模式也算正式完成。</strong>}
                 </div>
