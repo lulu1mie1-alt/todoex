@@ -2720,26 +2720,49 @@ textarea {
 
 .day-training-details {
   background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0 42px, transparent 43px),
+    repeating-linear-gradient(180deg, transparent 0 28px, rgba(114, 93, 66, 0.08) 29px 31px, transparent 32px 56px),
     radial-gradient(circle, rgba(25, 200, 185, 0.1) 1.5px, transparent 1.6px) 0 0 / 22px 22px,
-    rgba(255, 254, 248, 0.78);
-  border: 2px dashed rgba(114, 93, 66, 0.2);
+    rgba(230, 249, 246, 0.88);
+  border: 2px dashed rgba(25, 200, 185, 0.34);
   border-radius: var(--radius-lg);
   display: grid;
-  gap: 12px;
-  padding: 13px;
+  gap: 13px;
+  overflow: hidden;
+  padding: 16px 13px 13px;
+  position: relative;
+}
+
+.day-training-details::before {
+  background:
+    radial-gradient(circle, rgba(25, 200, 185, 0.42) 0 2px, transparent 2.5px) 0 0 / 32px 32px;
+  bottom: 0;
+  content: "";
+  left: 48px;
+  opacity: 0.38;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 2px;
 }
 
 .day-training-header {
   align-items: start;
-  display: flex;
+  display: grid;
   gap: 10px;
-  justify-content: space-between;
+  grid-template-columns: auto minmax(0, 1fr);
+  position: relative;
+  z-index: 1;
 }
 
 .day-training-header > div {
   display: grid;
   gap: 4px;
   min-width: 0;
+}
+
+.day-log-icon {
+  margin-top: 2px;
 }
 
 .day-training-header span {
@@ -2756,31 +2779,76 @@ textarea {
 }
 
 .day-training-header small {
+  align-items: center;
   background: #fff7d9;
   border: 2px solid rgba(245, 195, 28, 0.52);
   border-radius: var(--radius-pill);
   color: #7b5815;
-  flex-shrink: 0;
   font-size: 12px;
   font-weight: 900;
-  max-width: 46%;
+  display: inline-flex;
+  gap: 6px;
+  grid-column: 1 / -1;
+  justify-content: center;
+  justify-self: start;
+  max-width: 100%;
   overflow-wrap: anywhere;
   padding: 6px 10px;
   text-align: center;
 }
 
+.day-chip-icon {
+  flex: 0 0 auto;
+}
+
 .day-training-list {
   display: grid;
   gap: 10px;
+  position: relative;
+  z-index: 1;
 }
 
 .day-training-item {
-  background: #fffefa;
-  border: 2px solid rgba(196, 184, 158, 0.62);
-  border-radius: var(--radius);
+  background:
+    linear-gradient(90deg, rgba(255, 247, 217, 0.74), transparent 24%),
+    #fffefa;
+  border: 2px solid rgba(196, 184, 158, 0.7);
+  border-radius: var(--radius-lg);
   display: grid;
-  gap: 9px;
+  gap: 10px;
+  overflow: hidden;
   padding: 12px;
+  position: relative;
+}
+
+.day-training-item::before {
+  background:
+    repeating-linear-gradient(180deg, rgba(213, 168, 92, 0.42) 0 8px, transparent 8px 16px);
+  bottom: 12px;
+  content: "";
+  left: 12px;
+  opacity: 0.62;
+  position: absolute;
+  top: 12px;
+  width: 3px;
+}
+
+.day-training-item::after {
+  align-items: center;
+  border: 2px solid rgba(224, 90, 90, 0.38);
+  border-radius: 50%;
+  bottom: 12px;
+  color: rgba(224, 90, 90, 0.56);
+  content: "OK";
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  position: absolute;
+  right: 12px;
+  transform: rotate(-10deg);
+  width: 34px;
 }
 
 .day-training-item-top {
@@ -2796,7 +2864,14 @@ textarea {
   font-weight: 900;
 }
 
-.day-training-item-top span:last-child {
+.time-pill,
+.training-type-pill {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.day-training-item-top .training-type-pill {
   background: var(--animal-primary-bg);
   border: 2px solid rgba(25, 200, 185, 0.24);
   border-radius: var(--radius-pill);
@@ -2810,19 +2885,46 @@ textarea {
   line-height: 1.4;
   margin: 0;
   overflow-wrap: anywhere;
+  padding-left: 14px;
+  padding-right: 42px;
+}
+
+.item-index-badge {
+  background: #ffe7dc;
+  border: 2px solid rgba(225, 140, 111, 0.36);
+  border-radius: var(--radius-pill);
+  color: #9a4e36;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  margin-right: 7px;
+  padding: 4px 7px;
 }
 
 .day-training-item dl {
+  background:
+    radial-gradient(circle, rgba(114, 93, 66, 0.08) 1.4px, transparent 1.5px) 0 0 / 18px 18px,
+    rgba(247, 243, 223, 0.62);
+  border: 2px dashed rgba(114, 93, 66, 0.18);
+  border-radius: var(--radius);
   display: grid;
-  gap: 7px;
+  gap: 0;
   margin: 0;
+  overflow: hidden;
+  padding: 2px 0;
 }
 
 .day-training-item dl div {
   align-items: start;
   display: grid;
   gap: 8px;
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
+  padding: 8px 10px;
+}
+
+.day-training-item dl div + div {
+  border-top: 1px dashed rgba(114, 93, 66, 0.16);
 }
 
 .day-training-item dt,
@@ -2833,7 +2935,10 @@ textarea {
 }
 
 .day-training-item dt {
+  align-items: center;
   color: var(--animal-text-muted);
+  display: inline-flex;
+  gap: 5px;
   font-weight: 900;
 }
 
@@ -2845,6 +2950,195 @@ textarea {
 
 .day-empty-copy {
   margin: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.meta-icon,
+.day-log-icon,
+.day-chip-icon {
+  display: inline-block;
+  height: 18px;
+  position: relative;
+  width: 18px;
+}
+
+.icon-logbook {
+  background: #fff7d9;
+  border: 2px solid #d5a85c;
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 rgba(213, 168, 92, 0.25);
+}
+
+.icon-logbook::before,
+.icon-logbook::after {
+  content: "";
+  position: absolute;
+}
+
+.icon-logbook::before {
+  background: #82d5bb;
+  border-radius: var(--radius-pill);
+  bottom: 2px;
+  left: 3px;
+  top: 2px;
+  width: 4px;
+}
+
+.icon-logbook::after {
+  border-top: 2px dashed rgba(121, 79, 39, 0.42);
+  left: 9px;
+  right: 2px;
+  top: 6px;
+}
+
+.icon-stamp {
+  border: 2px solid rgba(224, 90, 90, 0.6);
+  border-radius: 50%;
+}
+
+.icon-stamp::before {
+  background: rgba(224, 90, 90, 0.58);
+  border-radius: 50%;
+  content: "";
+  height: 6px;
+  left: 4px;
+  position: absolute;
+  top: 4px;
+  width: 6px;
+}
+
+.icon-clock {
+  border: 2px solid rgba(114, 93, 66, 0.42);
+  border-radius: 50%;
+}
+
+.icon-clock::before,
+.icon-clock::after {
+  background: rgba(114, 93, 66, 0.56);
+  border-radius: var(--radius-pill);
+  content: "";
+  left: 8px;
+  position: absolute;
+  top: 4px;
+  transform-origin: bottom center;
+  width: 2px;
+}
+
+.icon-clock::before {
+  height: 5px;
+}
+
+.icon-clock::after {
+  height: 4px;
+  transform: rotate(90deg);
+}
+
+.icon-flag::before {
+  background: #9a835a;
+  border-radius: var(--radius-pill);
+  content: "";
+  height: 16px;
+  left: 3px;
+  position: absolute;
+  top: 1px;
+  width: 3px;
+}
+
+.icon-flag::after {
+  background: linear-gradient(135deg, #e18c6f, #f5c31c);
+  border-radius: 5px 9px 8px 5px;
+  content: "";
+  height: 10px;
+  left: 6px;
+  position: absolute;
+  top: 2px;
+  width: 11px;
+}
+
+.icon-leaf::before {
+  background: linear-gradient(135deg, #6fba2c, #19c8b9);
+  border-radius: 100% 0 100% 0;
+  content: "";
+  height: 10px;
+  left: 3px;
+  position: absolute;
+  top: 4px;
+  transform: rotate(-18deg);
+  width: 14px;
+}
+
+.icon-timer {
+  border: 2px solid rgba(245, 195, 28, 0.72);
+  border-radius: 50%;
+}
+
+.icon-timer::before {
+  background: rgba(121, 79, 39, 0.54);
+  border-radius: var(--radius-pill);
+  content: "";
+  height: 7px;
+  left: 8px;
+  position: absolute;
+  top: 4px;
+  width: 2px;
+}
+
+.icon-spark::before,
+.icon-spark::after {
+  background: #f5c31c;
+  border-radius: var(--radius-pill);
+  content: "";
+  height: 14px;
+  left: 8px;
+  position: absolute;
+  top: 2px;
+  width: 3px;
+}
+
+.icon-spark::after {
+  transform: rotate(90deg);
+}
+
+.icon-tool::before {
+  background: #9a835a;
+  border-radius: var(--radius-pill);
+  content: "";
+  height: 15px;
+  left: 8px;
+  position: absolute;
+  top: 2px;
+  transform: rotate(38deg);
+  width: 4px;
+}
+
+.icon-tool::after {
+  border: 2px solid #d5a85c;
+  border-radius: 50%;
+  content: "";
+  height: 7px;
+  left: 2px;
+  position: absolute;
+  top: 1px;
+  width: 7px;
+}
+
+.icon-tag {
+  background: #ffe7dc;
+  border: 2px solid rgba(225, 140, 111, 0.62);
+  border-radius: 5px 8px 8px 5px;
+  transform: rotate(-12deg);
+}
+
+.icon-tag::before {
+  background: #fffefa;
+  border-radius: 50%;
+  content: "";
+  height: 4px;
+  left: 3px;
+  position: absolute;
+  top: 5px;
+  width: 4px;
 }
 
 .recap-detail-grid {
@@ -3206,6 +3500,16 @@ textarea {
 
   .recap-detail-grid {
     grid-template-columns: 1.2fr 0.8fr;
+  }
+
+  .day-training-header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .day-training-header small {
+    grid-column: auto;
+    justify-self: end;
+    max-width: 260px;
   }
 }
 

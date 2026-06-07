@@ -254,11 +254,13 @@ function DayTrainingDetails({ summary }: { summary: DailyTrainingSummary }) {
   return (
     <div className="day-training-details" aria-live="polite">
       <div className="day-training-header">
+        <span className="day-log-icon icon-logbook" aria-hidden="true" />
         <div>
           <span>小岛每日营业日志</span>
           <strong>{formatDayTitle(summary.date)}</strong>
         </div>
         <small>
+          <span className="day-chip-icon icon-stamp" aria-hidden="true" />
           {summary.completedCount > 0
             ? `${summary.completedCount} 个训练任务 · 约 ${summary.totalDuration} 分钟`
             : "休息日"}
@@ -269,32 +271,41 @@ function DayTrainingDetails({ summary }: { summary: DailyTrainingSummary }) {
         <p className="empty-copy day-empty-copy">这天小岛休息中，没有需要补课。</p>
       ) : (
         <div className="day-training-list">
-          {summary.completedItems.map((item) => (
+          {summary.completedItems.map((item, index) => (
             <article key={item.id} className="day-training-item">
               <div className="day-training-item-top">
-                <span>{formatCompletedTime(item.completedAt)}</span>
-                <span>{item.trainingType}</span>
+                <span className="time-pill">
+                  <i className="meta-icon icon-clock" aria-hidden="true" />
+                  {formatCompletedTime(item.completedAt)}
+                </span>
+                <span className="training-type-pill">
+                  <i className="meta-icon icon-flag" aria-hidden="true" />
+                  {item.trainingType}
+                </span>
               </div>
-              <h3>{item.author}｜{item.title}</h3>
-              <dl>
+              <h3>
+                <span className="item-index-badge">#{index + 1}</span>
+                {item.author}｜{item.title}
+              </h3>
+              <dl className="day-training-meta">
                 <div>
-                  <dt>部位</dt>
+                  <dt><i className="meta-icon icon-leaf" aria-hidden="true" />部位</dt>
                   <dd>{item.bodyPart}</dd>
                 </div>
                 <div>
-                  <dt>时长</dt>
+                  <dt><i className="meta-icon icon-timer" aria-hidden="true" />时长</dt>
                   <dd>{item.duration}</dd>
                 </div>
                 <div>
-                  <dt>强度</dt>
+                  <dt><i className="meta-icon icon-spark" aria-hidden="true" />强度</dt>
                   <dd>{item.intensity}</dd>
                 </div>
                 <div>
-                  <dt>道具</dt>
+                  <dt><i className="meta-icon icon-tool" aria-hidden="true" />道具</dt>
                   <dd>{item.equipment}</dd>
                 </div>
                 <div>
-                  <dt>标签</dt>
+                  <dt><i className="meta-icon icon-tag" aria-hidden="true" />标签</dt>
                   <dd>{item.specialTags.length > 0 ? item.specialTags.join("、") : "无特色标签"}</dd>
                 </div>
               </dl>
