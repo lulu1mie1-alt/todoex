@@ -152,7 +152,7 @@ function App() {
           />
         )}
         {activePage === "records" && <RecordsPage videos={videos} />}
-        {activePage === "settings" && <SettingsPage />}
+        {activePage === "settings" && <SettingsPage onVideosChanged={refreshSavedVideos} />}
       </main>
     </div>
   );

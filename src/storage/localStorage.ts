@@ -1,5 +1,6 @@
 import type { AppSettings } from "../types/settings";
 import type { CheckinRecord, DailyPlan, PlanItem, Video } from "../types/video";
+import { defaultVideos } from "../data/defaultVideos";
 import {
   BODY_PART_OPTIONS,
   EQUIPMENT_OPTIONS,
@@ -15,6 +16,7 @@ const CHECKIN_STORAGE_KEY = "fitnessIsland.checkinRecords";
 const SETTINGS_STORAGE_KEY = "fitnessIsland.settings";
 const CUSTOM_TAG_OPTIONS_KEY = "fitnessIsland.customTagOptions";
 const PLANS_STORAGE_KEY = "fitnessIsland.plans";
+const DEFAULT_VIDEOS_INITIALIZED_KEY = "fitnessIsland.defaultVideosInitialized";
 
 export type CustomTagGroup = "bodyPart" | "intensity" | "equipment" | "trainingType" | "specialTags";
 
@@ -94,12 +96,48 @@ function saveStoredTagOptions(options: StoredTagOptions) {
   writeStorage(CUSTOM_TAG_OPTIONS_KEY, options);
 }
 
+export function initializeDefaultVideosIfNeeded(): Video[] {
+  const videos = readArrayStorage<Video>(VIDEO_STORAGE_KEY);
+  const initialized = localStorage.getItem(DEFAULT_VIDEOS_INITIALIZED_KEY);
+
+  if (initialized) return videos;
+
+  if (videos.length === 0) {
+    writeStorage(VIDEO_STORAGE_KEY, defaultVideos);
+    localStorage.setItem(DEFAULT_VIDEOS_INITIALIZED_KEY, "true");
+    return defaultVideos;
+  }
+
+  localStorage.setItem(DEFAULT_VIDEOS_INITIALIZED_KEY, "true");
+  return videos;
+}
+
 export function getVideos(): Video[] {
-  return readArrayStorage<Video>(VIDEO_STORAGE_KEY);
+  return initializeDefaultVideosIfNeeded();
 }
 
 export function saveVideos(videos: Video[]) {
   writeStorage(VIDEO_STORAGE_KEY, videos);
+}
+
+export function restoreDefaultVideos() {
+  const videos = readArrayStorage<Video>(VIDEO_STORAGE_KEY);
+  const existingIds = new Set(videos.map((video) => video.id));
+  const existingUrls = new Set(videos.map((video) => video.url));
+  const missingDefaultVideos = defaultVideos.filter(
+    (video) => !existingIds.has(video.id) && !existingUrls.has(video.url),
+  );
+
+  if (missingDefaultVideos.length > 0) {
+    saveVideos([...missingDefaultVideos, ...videos]);
+  }
+
+  localStorage.setItem(DEFAULT_VIDEOS_INITIALIZED_KEY, "true");
+
+  return {
+    restoredCount: missingDefaultVideos.length,
+    totalDefaultCount: defaultVideos.length,
+  };
 }
 
 export function addVideo(video: Video) {
@@ -275,4 +313,5 @@ export function clearAllData() {
   localStorage.removeItem(SETTINGS_STORAGE_KEY);
   localStorage.removeItem(CUSTOM_TAG_OPTIONS_KEY);
   localStorage.removeItem(PLANS_STORAGE_KEY);
+  localStorage.removeItem(DEFAULT_VIDEOS_INITIALIZED_KEY);
 }
