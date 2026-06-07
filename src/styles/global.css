@@ -2511,6 +2511,24 @@ textarea {
     linear-gradient(135deg, rgba(255, 254, 248, 0.96), rgba(230, 249, 246, 0.78));
 }
 
+.records-hero .section-kicker,
+.records-hero h2 {
+  padding-right: 118px;
+}
+
+.records-hero-mascot {
+  display: block;
+  filter: drop-shadow(0 6px 0 rgba(196, 184, 158, 0.34));
+  height: 82px;
+  object-fit: contain;
+  pointer-events: none;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 82px;
+  z-index: 2;
+}
+
 .weekly-island-report {
   background:
     linear-gradient(90deg, rgba(154, 131, 90, 0.12), transparent 14%, transparent 86%, rgba(154, 131, 90, 0.12)),
@@ -2632,6 +2650,30 @@ textarea {
   display: grid;
   gap: 7px;
   padding: 13px;
+}
+
+.weekly-summary-card {
+  min-height: 116px;
+  overflow: hidden;
+  padding-right: 104px;
+  position: relative;
+}
+
+.weekly-summary-copy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.weekly-summary-mascot {
+  display: block;
+  height: 78px;
+  object-fit: contain;
+  position: absolute;
+  right: 13px;
+  top: 13px;
+  width: 78px;
+  filter: drop-shadow(0 6px 0 rgba(196, 184, 158, 0.34));
 }
 
 .weekly-summary-card span,
@@ -3578,6 +3620,33 @@ textarea {
   .video-title-line,
   .video-detail-line {
     white-space: normal;
+  }
+
+  .records-hero {
+    padding-right: 18px;
+  }
+
+  .records-hero .section-kicker,
+  .records-hero h2 {
+    padding-right: 84px;
+  }
+
+  .records-hero-mascot {
+    height: 66px;
+    right: 12px;
+    top: 12px;
+    width: 66px;
+  }
+
+  .weekly-summary-card {
+    padding-right: 88px;
+  }
+
+  .weekly-summary-mascot {
+    height: 64px;
+    right: 12px;
+    top: 12px;
+    width: 64px;
   }
 }
 

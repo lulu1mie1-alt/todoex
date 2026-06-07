@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import islandSecretaryDog from "../assets/island-secretary-dog.png";
 import { getCheckinRecords } from "../storage/localStorage";
 import StickerIcon from "../components/StickerIcon";
 import type { CheckinRecord, Video } from "../types/video";
@@ -82,6 +83,7 @@ function RecordsPage({ videos }: RecordsPageProps) {
         <p className="section-kicker">Weekly Review</p>
         <h2>小岛周报</h2>
         <p>{weeklyReport.managerSummary}</p>
+        <img className="records-hero-mascot" src={islandSecretaryDog} alt="" aria-hidden="true" />
       </div>
 
       <section className="panel recap-panel weekly-island-report" aria-label="最近 7 天小岛周报">
@@ -135,8 +137,11 @@ function RecordsPage({ videos }: RecordsPageProps) {
         </div>
 
         <div className="weekly-summary-card">
-          <span>小岛管理员总结</span>
-          <p>{weeklyReport.managerSummary}</p>
+          <div className="weekly-summary-copy">
+            <span>小岛管理员总结</span>
+            <p>{weeklyReport.managerSummary}</p>
+          </div>
+          <img className="weekly-summary-mascot" src={islandSecretaryDog} alt="" aria-hidden="true" />
         </div>
 
         <div className="week-route-title">
