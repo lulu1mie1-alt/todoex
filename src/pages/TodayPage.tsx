@@ -22,6 +22,8 @@ import {
   type TodayLimitation,
   type TodayStatus,
 } from "../utils/recommendationEngine";
+import StickerIcon from "../components/StickerIcon";
+import { buildCheckinFeedback, type CheckinFeedback } from "../utils/stickerUtils";
 import { normalizeBodyPartText } from "../utils/tagOptions";
 
 interface TodayPageProps {
@@ -73,7 +75,7 @@ const defaultTodayStatus: TodayStatus = {
   limitations: [],
 };
 
-function buildCheckinRecord(video: Video) {
+function buildCheckinRecord(video: Video, routeType: RouteType, todayEnergy: TodayEnergy) {
   return {
     id: `checkin-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     videoId: video.id,
@@ -88,6 +90,8 @@ function buildCheckinRecord(video: Video) {
     completedAt: new Date().toISOString(),
     mood: "完成今日计划",
     note: "",
+    routeType,
+    todayEnergy,
   };
 }
 
@@ -104,6 +108,7 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
   const [planVersion, setPlanVersion] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [checkinDialogOpen, setCheckinDialogOpen] = useState(false);
+  const [checkinFeedback, setCheckinFeedback] = useState<CheckinFeedback | null>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerStep, setPlannerStep] = useState<PlannerStep>("status");
   const [todayStatus, setTodayStatus] = useState<TodayStatus>(defaultTodayStatus);
@@ -216,10 +221,13 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
     );
 
     if (itemsToCheckIn.length === 0) {
-      setCheckinDialogOpen(true);
+      setCheckinFeedback(null);
+      setCheckinDialogOpen(false);
       refreshPlan("今天就这样吧。没完成也没关系，身体和生活都可以慢慢来。");
       return;
     }
+
+    const completedVideos: Video[] = [];
 
     itemsToCheckIn.forEach(({ video }) => {
       const storedVideo = storedVideos.find((item) => item.id === video.id);
@@ -229,12 +237,20 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
         completedCount: storedVideo.completedCount + 1,
         lastPracticedAt: today,
       });
-      addCheckinRecord(buildCheckinRecord(storedVideo));
+      addCheckinRecord(buildCheckinRecord(storedVideo, currentRoute.routeType, todayStatus.energy));
+      completedVideos.push(storedVideo);
     });
 
+    setCheckinFeedback(
+      buildCheckinFeedback({
+        completedVideos,
+        routeType: currentRoute.routeType,
+        todayEnergy: todayStatus.energy,
+      }),
+    );
     onVideosChanged();
     setCheckinDialogOpen(true);
-    refreshPlan("今天的小岛亮起来了。你完成了今日计划的小任务，不是每一天都要暴汗，今天完成就已经很棒。");
+    refreshPlan("今天的小岛点亮成功，贴纸已经送到公告板啦。");
   }
 
   useEffect(() => {
@@ -272,15 +288,18 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
       {feedback && <p className="form-success">{feedback}</p>}
 
       <div className="panel notice-board today-board">
-        <div className="section-header">
-          <h2>今日计划</h2>
+        <div className="section-header today-board-header">
+          <div className="today-board-title">
+            <span className="today-board-icon" aria-hidden="true" />
+            <h2>今日计划</h2>
+          </div>
           <span>
             ({completedCount}/{totalCount})
           </span>
         </div>
         <div className="card-list">
           {plannedItems.length === 0 && (
-            <p className="empty-copy">
+            <p className="empty-copy today-empty-copy">
               今天的小岛还空着，可以让小岛管理员先帮你安排一条路线，也可以从视频库加入想练的视频。
             </p>
           )}
@@ -313,7 +332,7 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
             </div>
           ))}
         </div>
-        <button className="primary-button checkin-button settlement-button" type="button" disabled={totalCount === 0 || alreadyCheckedIn} onClick={completeTodayCheckin}>
+        <button className="primary-button checkin-button settlement-button today-checkin-button" type="button" disabled={totalCount === 0 || alreadyCheckedIn} onClick={completeTodayCheckin}>
           {alreadyCheckedIn ? "今日小岛已点亮" : `打卡进度：${completedCount}/${totalCount}`}
         </button>
       </div>
@@ -461,13 +480,30 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
       )}
 
       {checkinDialogOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="今日打卡完成">
-          <div className="checkin-modal stamp-modal">
+        <div className="modal-backdrop checkin-backdrop" role="dialog" aria-modal="true" aria-label="小岛点亮成功">
+          <div className="checkin-modal stamp-modal island-lit-modal">
             <p className="section-kicker">Check-in</p>
-            <h2>今天的小岛亮起来了</h2>
-            <p>你已经认真照顾过自己了。今天就这样吧，也很好。</p>
+            <h2>{checkinFeedback?.title ?? "今日训练岛营业成功！"}</h2>
+            <p>{checkinFeedback?.managerCopy ?? "今天不是变完美，是没有放弃。"}</p>
+            {checkinFeedback && (
+              <>
+                <div className="sticker-reward-card">
+                  <StickerIcon kind={checkinFeedback.sticker.kind} label={checkinFeedback.sticker.name} />
+                  <div>
+                    <strong>{checkinFeedback.sticker.name}</strong>
+                    <span>{checkinFeedback.sticker.description}</span>
+                  </div>
+                </div>
+                <div className="checkin-summary-card">
+                  <span>今日完成 {checkinFeedback.taskCount} 个训练任务</span>
+                  {checkinFeedback.totalMinutes > 0 && <span>累计约 {checkinFeedback.totalMinutes} 分钟</span>}
+                  <span>路线类型：{checkinFeedback.routeLabel}</span>
+                  {checkinFeedback.isLowEnergy && <strong>低能量模式也算正式完成。</strong>}
+                </div>
+              </>
+            )}
             <button className="primary-button" type="button" onClick={() => setCheckinDialogOpen(false)}>
-              收好这次打卡
+              收下贴纸
             </button>
           </div>
         </div>

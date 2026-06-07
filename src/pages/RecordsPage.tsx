@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { getCheckinRecords } from "../storage/localStorage";
+import StickerIcon from "../components/StickerIcon";
 import type { CheckinRecord, Video } from "../types/video";
 import { getDateKey } from "../utils/date";
 import {
@@ -8,6 +9,7 @@ import {
   sortRecordsByCompletedAtDesc,
 } from "../utils/stats";
 import { normalizeBodyPartText } from "../utils/tagOptions";
+import { buildWeeklyIslandReport } from "../utils/weeklyReportUtils";
 
 interface RecordsPageProps {
   videos: Video[];
@@ -45,6 +47,7 @@ function RecordsPage({ videos: _videos }: RecordsPageProps) {
   const [filter, setFilter] = useState<RecordFilter>("7d");
   const records = useMemo(() => sortRecordsByCompletedAtDesc(getCheckinRecords()), []);
   const weeklyStats = useMemo(() => buildWeeklyStats(records), [records]);
+  const weeklyReport = useMemo(() => buildWeeklyIslandReport(weeklyStats), [weeklyStats]);
   const filteredRecords = useMemo(() => sortRecordsByCompletedAtDesc(getFilteredRecords(records, filter)), [filter, records]);
   const maxTrainingTypeCount = Math.max(...weeklyStats.trainingTypeCounts.map((item) => item.count), 1);
 
@@ -52,34 +55,69 @@ function RecordsPage({ videos: _videos }: RecordsPageProps) {
     <section className="page-stack">
       <div className="panel hero-panel records-hero">
         <p className="section-kicker">Weekly Review</p>
-        <h2>记录 / 复盘</h2>
-        <p>{weeklyStats.summary}</p>
+        <h2>小岛周报</h2>
+        <p>{weeklyReport.managerSummary}</p>
       </div>
 
-      <section className="panel recap-panel weekly-island-report" aria-label="最近 7 天周复盘">
-        <div className="section-header">
-          <h2>最近 7 天周复盘</h2>
-          <span>{weeklyStats.totalCount} 次</span>
+      <section className="panel recap-panel weekly-island-report" aria-label="最近 7 天小岛周报">
+        <div className="section-header weekly-report-header">
+          <div>
+            <p className="section-kicker">Island Report</p>
+            <h2>训练岛营业报告</h2>
+          </div>
+          <span>{weeklyReport.islandTitle}</span>
         </div>
 
-        <div className="recap-grid">
-          <div className="recap-stat">
-            <span>完成次数</span>
-            <strong>{weeklyStats.totalCount}</strong>
-            <small>次点亮</small>
+        <div className="weekly-announcement">
+          <StickerIcon kind={weeklyReport.representativeSticker.kind} label={weeklyReport.representativeSticker.name} />
+          <div>
+            <strong>{weeklyReport.representativeSticker.name}</strong>
+            <p>{weeklyReport.representativeSticker.description}</p>
+          </div>
+        </div>
+
+        <div className="recap-grid island-report-grid">
+          <div className="recap-stat featured">
+            <span>本周小岛点亮</span>
+            <strong>{weeklyReport.activeDayCount}/7</strong>
+            <small>没亮的日子只是休息日</small>
           </div>
           <div className="recap-stat">
-            <span>估计时长</span>
+            <span>本周完成训练</span>
+            <strong>{weeklyStats.totalCount}</strong>
+            <small>次任务</small>
+          </div>
+          <div className="recap-stat">
+            <span>本周回来过</span>
+            <strong>{weeklyReport.returnCount}</strong>
+            <small>天</small>
+          </div>
+          <div className="recap-stat">
+            <span>累计时长</span>
             <strong>{weeklyStats.totalMinutes}</strong>
             <small>分钟</small>
           </div>
           <div className="recap-stat">
-            <span>常练部位</span>
+            <span>最常建设区域</span>
             <strong>{weeklyStats.topBodyPart || "慢慢积累"}</strong>
             <small>最近 7 天</small>
           </div>
+          <div className="recap-stat">
+            <span>主要训练类型</span>
+            <strong>{weeklyReport.mainTrainingType || "暂未分类"}</strong>
+            <small>{weeklyReport.showLowEnergyCount ? `维护日 ${weeklyReport.lowEnergyCount} 次` : "按记录自动统计"}</small>
+          </div>
         </div>
 
+        <div className="weekly-summary-card">
+          <span>小岛管理员总结</span>
+          <p>{weeklyReport.managerSummary}</p>
+        </div>
+
+        <div className="week-route-title">
+          <strong>本周小岛亮了 {weeklyReport.activeDayCount} 天</strong>
+          <span>空白不是失败，只是小岛休息日。</span>
+        </div>
         <div className="week-dots" aria-label="最近 7 天打卡日历">
           {weeklyStats.dateKeys.map((dateKey) => {
             const active = weeklyStats.activeDateKeys.has(dateKey);
@@ -87,6 +125,7 @@ function RecordsPage({ videos: _videos }: RecordsPageProps) {
               <div key={dateKey} className={active ? "week-dot-day active" : "week-dot-day"}>
                 <span>{formatDayLabel(dateKey)}</span>
                 <i aria-hidden="true" />
+                <small>{active ? "亮灯" : "休息"}</small>
               </div>
             );
           })}
@@ -108,7 +147,7 @@ function RecordsPage({ videos: _videos }: RecordsPageProps) {
           </div>
 
           <div className="recap-box">
-            <span>使用最多的视频</span>
+            <span>本周最常使用视频</span>
             {weeklyStats.topVideo ? (
               <p className="top-video-copy">
                 {weeklyStats.topVideo.label}

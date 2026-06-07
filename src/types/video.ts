@@ -35,6 +35,8 @@ export interface CheckinRecord {
   completedAt: string;
   mood: string;
   note: string;
+  routeType?: "low_energy" | "default" | "active" | "sweaty";
+  todayEnergy?: "low" | "normal" | "good" | "sweaty";
 }
 
 export interface PlanItem {
