@@ -22,15 +22,13 @@ const pageTitles: Record<AppPage, string> = {
 const headerActions: Partial<Record<AppPage, { label: string; target?: AppPage }>> = {
   today: { label: "小岛管理员帮我安排" },
   library: { label: "投递", target: "import" },
-  records: { label: "导出", target: "settings" },
+  records: { label: "设置", target: "settings" },
 };
 
 const ACTIVE_PAGE_KEY = "fitnessIsland.activePage";
-const validPages: AppPage[] = ["today", "library", "import", "records", "settings"];
 
 function getInitialActivePage(): AppPage {
-  const storedPage = sessionStorage.getItem(ACTIVE_PAGE_KEY);
-  return validPages.includes(storedPage as AppPage) ? (storedPage as AppPage) : "today";
+  return "today";
 }
 
 function App() {

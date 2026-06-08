@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import VideoCard from "../components/VideoCard";
 import {
   addCheckinRecord,
-  addVideoToPlan,
   getCheckinRecords,
   getPlanByDate,
   getVideos,
   removeVideoFromPlan,
+  replacePlanVideos,
   togglePlanItemCompleted,
   updateVideo,
 } from "../storage/localStorage";
@@ -183,15 +183,19 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
       return;
     }
 
-    currentRoute.recommendedVideos.forEach((video) => {
-      addVideoToPlan(today, video.id);
-    });
+    replacePlanVideos(
+      today,
+      currentRoute.recommendedVideos.map((video) => video.id),
+      completedTodayIds,
+    );
 
     setPlanVersion((version) => version + 1);
     setFeedback(
-      totalCount > 0
-        ? "今日计划里已经有训练任务啦，可以继续添加这条路线，也可以换一条路线。这条路线已继续加入。"
-        : "小岛管理员已经把今日路线放进计划啦。",
+      completedTodayIds.length > 0
+        ? "新路线已替换未打卡项目，今天已经打卡过的训练会留在计划里。"
+        : totalCount > 0
+          ? "新路线已替换原来的今日计划。"
+          : "小岛管理员已经把今日路线放进计划啦。",
     );
     closePlanner();
   }
@@ -453,7 +457,7 @@ function TodayPage({ videos, onVideosChanged, onGoImport, plannerRequest }: Toda
 
                 {totalCount > 0 && (
                   <p className="planner-notice">
-                    今日计划里已经有训练任务啦，可以继续添加这条路线，也可以换一条路线。
+                    今日计划里已经有训练任务啦，加入新路线会替换未打卡项目，已打卡内容会保留。
                   </p>
                 )}
                 {currentRoute.notice && <p className="planner-notice">{currentRoute.notice}</p>}

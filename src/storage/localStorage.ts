@@ -208,6 +208,35 @@ export function addVideoToPlan(date: string, videoId: string) {
   saveAllPlans([...plans, { date, items: [createPlanItem(videoId)] }]);
 }
 
+export function replacePlanVideos(date: string, videoIds: string[], lockedVideoIds: string[] = []) {
+  const plans = getAllPlans();
+  const existingPlan = plans.find((plan) => plan.date === date);
+  const lockedSet = new Set(lockedVideoIds);
+  const lockedItems = existingPlan?.items.filter((item) => lockedSet.has(item.videoId)) ?? [];
+  const existingVideoIds = new Set(lockedItems.map((item) => item.videoId));
+  const replacementItems = videoIds
+    .filter((videoId) => {
+      if (existingVideoIds.has(videoId)) return false;
+      existingVideoIds.add(videoId);
+      return true;
+    })
+    .map((videoId) => createPlanItem(videoId));
+  const nextPlan = { date, items: [...lockedItems, ...replacementItems] };
+
+  if (existingPlan) {
+    saveAllPlans(
+      plans
+        .map((plan) => (plan.date === date ? nextPlan : plan))
+        .filter((plan) => plan.items.length > 0),
+    );
+    return;
+  }
+
+  if (nextPlan.items.length > 0) {
+    saveAllPlans([...plans, nextPlan]);
+  }
+}
+
 export function removeVideoFromPlan(date: string, videoId: string) {
   const plans = getAllPlans();
   saveAllPlans(

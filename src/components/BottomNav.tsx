@@ -8,9 +8,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { key: "today", label: "今日", icon: "island" },
   { key: "library", label: "图鉴", icon: "album" },
-  { key: "import", label: "投递", icon: "post" },
+  { key: "today", label: "今日", icon: "island" },
   { key: "records", label: "周报", icon: "stamp" },
 ];
 

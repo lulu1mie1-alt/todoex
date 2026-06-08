@@ -3344,7 +3344,7 @@ textarea {
   box-shadow: 0 5px 0 var(--animal-shadow-input), var(--shadow-lg);
   display: grid;
   gap: 5px;
-  grid-template-columns: repeat(4, minmax(76px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
   overflow-x: auto;
   padding: 7px;
@@ -3372,7 +3372,7 @@ textarea {
   font-weight: 900;
   gap: 4px;
   justify-items: center;
-  min-width: 76px;
+  min-width: 0;
   padding: 7px 3px 8px;
 }
 
@@ -3602,11 +3602,7 @@ textarea {
   }
 
   .island-nav {
-    grid-template-columns: repeat(4, minmax(70px, 1fr));
-  }
-
-  .island-nav button {
-    min-width: 70px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .card-actions {

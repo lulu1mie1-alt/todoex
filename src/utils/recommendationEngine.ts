@@ -32,6 +32,12 @@ interface BuildRecommendationRouteInput {
 
 type RecommendationSlot = "main" | "support" | "recovery" | "any";
 
+interface ScoredCandidate {
+  video: Video;
+  score: number;
+  order: number;
+}
+
 const BODY_PART_KEYWORDS: Record<Exclude<TodayBodyPart, "auto">, string[]> = {
   fullBody: ["全身"],
   shoulderNeck: ["肩颈", "肩背"],
@@ -92,10 +98,9 @@ function routeTypeForEnergy(energy: TodayEnergy): RouteType {
   return "default";
 }
 
-function targetCountForRoute(routeType: RouteType) {
-  if (routeType === "low_energy") return 1;
-  if (routeType === "sweaty") return 3;
-  return 3;
+function routeTargetMinutes(routeType: RouteType, availableMinutes: number) {
+  if (routeType === "low_energy") return Math.min(availableMinutes, 15);
+  return availableMinutes;
 }
 
 function getLastMainBodyPart(records: CheckinRecord[]) {
@@ -171,12 +176,16 @@ function energyScore(video: Video, routeType: RouteType, slot: RecommendationSlo
 
   if (routeType === "active") {
     if (slot === "recovery") return isRecoveryVideo(video) ? 28 : -8;
-    return includesAny(text, ["中强度", "中高强度", "高强度", "力量", "有氧", "针对训练"]) ? 22 : 0;
+    if (includesAny(text, ["低强度"]) && !isRecoveryVideo(video)) return -12;
+    return includesAny(text, ["中强度", "中高强度", "高强度", "力量", "有氧", "针对训练", "暴汗预警"]) ? 26 : 0;
   }
 
   if (slot === "recovery") return isRecoveryVideo(video) ? 30 : -8;
-  if (slot === "main") return isMainTraining(video) ? 24 : 0;
-  return isRecoveryVideo(video) ? 4 : 12;
+  if (slot === "main") {
+    if (!isMainTraining(video)) return 0;
+    return includesAny(text, ["低强度", "高强度", "暴汗预警", "心率强者"]) ? 14 : 26;
+  }
+  return isRecoveryVideo(video) ? 10 : 14;
 }
 
 function scoreVideo(video: Video, input: BuildRecommendationRouteInput, slot: RecommendationSlot, lastMainBodyPart: string) {
@@ -197,6 +206,14 @@ function scoreVideo(video: Video, input: BuildRecommendationRouteInput, slot: Re
   return score;
 }
 
+function hashText(value: string) {
+  return value.split("").reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) % 997, 7);
+}
+
+function variantScore(video: Video, variant: number) {
+  return (hashText(`${video.id}-${variant}`) % 19) - 9;
+}
+
 function sortCandidates(
   videos: Video[],
   input: BuildRecommendationRouteInput,
@@ -209,8 +226,8 @@ function sortCandidates(
     .filter((video) => !selectedIds.has(video.id))
     .map((video, index) => ({
       video,
-      score: scoreVideo(video, input, slot, lastMainBodyPart),
-      tieBreaker: (index + variant * 7) % Math.max(1, videos.length),
+      score: scoreVideo(video, input, slot, lastMainBodyPart) + variantScore(video, variant),
+      tieBreaker: (index + variant * 3) % Math.max(1, videos.length),
     }))
     .sort((a, b) => b.score - a.score || a.tieBreaker - b.tieBreaker)
     .map((entry) => entry.video);
@@ -227,47 +244,130 @@ function chooseVideo(
   return sorted[0] ?? null;
 }
 
+function scoreRouteCombination(
+  videos: Video[],
+  candidates: ScoredCandidate[],
+  input: BuildRecommendationRouteInput,
+  routeType: RouteType,
+) {
+  const targetMinutes = routeTargetMinutes(routeType, input.todayStatus.availableMinutes);
+  const totalDuration = videos.reduce((sum, video) => sum + durationOf(video), 0);
+  const candidateScoreById = new Map(candidates.map((candidate) => [candidate.video.id, candidate.score]));
+  const qualityScore = videos.reduce((sum, video) => sum + (candidateScoreById.get(video.id) ?? 0), 0);
+  const overage = Math.max(0, totalDuration - targetMinutes);
+  const underage = Math.max(0, targetMinutes - totalDuration);
+  const timeFitScore = 300 - overage * 18 - underage * 10;
+  const recoveryCount = videos.filter(isRecoveryVideo).length;
+  const activeMainCount = videos.filter((video) => isMainTraining(video) && !isRecoveryVideo(video)).length;
+  const routeShapeScore =
+    routeType === "low_energy"
+      ? recoveryCount * 14 - Math.max(0, videos.length - 2) * 18
+      : routeType === "active"
+        ? activeMainCount * 12 + recoveryCount * 4
+        : routeType === "sweaty"
+          ? activeMainCount * 10 + recoveryCount * 6
+          : recoveryCount * 8 + activeMainCount * 6;
+  const countPenalty = Math.max(0, videos.length - 1) * 12;
+
+  return timeFitScore + qualityScore * 0.2 + routeShapeScore - countPenalty;
+}
+
+function buildTimeFittingRoute(
+  candidates: ScoredCandidate[],
+  input: BuildRecommendationRouteInput,
+  routeType: RouteType,
+) {
+  const targetMinutes = routeTargetMinutes(routeType, input.todayStatus.availableMinutes);
+  const maxDuration = routeType === "low_energy" ? targetMinutes + 5 : targetMinutes + 8;
+  const maxItems = routeType === "low_energy" ? 2 : 5;
+  const beamLimit = 28;
+  const start = { videos: [] as Video[], duration: 0 };
+  let routes = [start];
+
+  candidates.slice(0, 24).forEach((candidate) => {
+    const duration = durationOf(candidate.video);
+    if (duration <= 0) return;
+
+    const additions = routes
+      .filter((route) => route.videos.length < maxItems && route.duration + duration <= maxDuration)
+      .map((route) => ({
+        videos: [...route.videos, candidate.video],
+        duration: route.duration + duration,
+      }));
+
+    routes = [...routes, ...additions]
+      .sort(
+        (a, b) =>
+          scoreRouteCombination(b.videos, candidates, input, routeType) -
+          scoreRouteCombination(a.videos, candidates, input, routeType),
+      )
+      .slice(0, beamLimit);
+  });
+
+  const nonEmptyRoutes = routes.filter((route) => route.videos.length > 0);
+  if (nonEmptyRoutes.length === 0) return [];
+
+  const rankedRoutes = [...nonEmptyRoutes].sort(
+    (a, b) =>
+      scoreRouteCombination(b.videos, candidates, input, routeType) -
+      scoreRouteCombination(a.videos, candidates, input, routeType),
+  );
+  const seenRouteKeys = new Set<string>();
+  const uniqueRoutes = rankedRoutes.filter((route) => {
+    const key = route.videos.map((video) => video.id).join("|");
+    if (seenRouteKeys.has(key)) return false;
+    seenRouteKeys.add(key);
+    return true;
+  });
+  const bestScore = scoreRouteCombination(uniqueRoutes[0].videos, candidates, input, routeType);
+  const swappableRoutes = uniqueRoutes.filter(
+    (route) => bestScore - scoreRouteCombination(route.videos, candidates, input, routeType) <= 45,
+  );
+  const variant = input.variant ?? 0;
+
+  return swappableRoutes[variant % Math.max(1, swappableRoutes.length)].videos;
+}
+
 function selectRouteVideos(input: BuildRecommendationRouteInput) {
   const routeType = routeTypeForEnergy(input.todayStatus.energy);
   const plannedVideoIds = new Set(input.todayPlan.items.map((item) => item.videoId));
   const availableVideos = input.videos.filter((video) => !plannedVideoIds.has(video.id));
-  const selectedIds = new Set<string>();
-  const selectedVideos: Video[] = [];
   const lastMainBodyPart = getLastMainBodyPart(input.checkinRecords);
 
-  if (availableVideos.length === 0) return selectedVideos;
+  if (availableVideos.length === 0) return [];
 
   const slots: RecommendationSlot[] =
     routeType === "low_energy"
       ? ["recovery"]
       : routeType === "sweaty"
         ? ["main", "support", "recovery"]
-        : ["main", "support", "recovery"];
+        : routeType === "active"
+          ? ["main", "support"]
+          : ["main", "recovery"];
+  const variant = input.variant ?? 0;
+  const slotCandidates = slots.flatMap((slot, slotIndex) =>
+    sortCandidates(availableVideos, input, slot, new Set(), lastMainBodyPart).map((video, order) => ({
+      video,
+      score: scoreVideo(video, input, slot, lastMainBodyPart) + variantScore(video, variant + slotIndex),
+      order,
+    })),
+  );
+  const bestCandidateById = new Map<string, ScoredCandidate>();
 
-  slots.forEach((slot) => {
-    const nextVideo = chooseVideo(availableVideos, input, slot, selectedIds, lastMainBodyPart);
-    if (!nextVideo) return;
-    selectedIds.add(nextVideo.id);
-    selectedVideos.push(nextVideo);
+  slotCandidates.forEach((candidate) => {
+    const existing = bestCandidateById.get(candidate.video.id);
+    if (!existing || candidate.score > existing.score) {
+      bestCandidateById.set(candidate.video.id, candidate);
+    }
   });
 
-  const targetCount = targetCountForRoute(routeType);
-  while (selectedVideos.length < targetCount) {
-    const nextVideo = chooseVideo(availableVideos, input, "any", selectedIds, lastMainBodyPart);
-    if (!nextVideo) break;
-    selectedIds.add(nextVideo.id);
-    selectedVideos.push(nextVideo);
-  }
+  const candidates = Array.from(bestCandidateById.values()).sort((a, b) => b.score - a.score || a.order - b.order);
+  const selectedVideos = buildTimeFittingRoute(candidates, input, routeType);
 
-  if (routeType === "sweaty" && selectedVideos.length === 3) {
-    const totalDuration = selectedVideos.reduce((sum, video) => sum + durationOf(video), 0);
-    if (totalDuration > input.todayStatus.availableMinutes + 15) {
-      const last = selectedVideos[selectedVideos.length - 1];
-      if (!isRecoveryVideo(last)) selectedVideos.pop();
-    }
-  }
+  if (selectedVideos.length > 0) return selectedVideos;
 
-  return selectedVideos;
+  const fallbackVideo = chooseVideo(availableVideos, input, "any", new Set(), lastMainBodyPart);
+  return fallbackVideo ? [fallbackVideo] : [];
 }
 
 function buildReason(routeType: RouteType, selectedVideos: Video[], lastMainBodyPart: string) {
@@ -281,9 +381,9 @@ function buildReason(routeType: RouteType, selectedVideos: Video[], lastMainBody
     : "";
 
   const baseReason: Record<RouteType, string> = {
-    low_energy: "今天进入低能量模式，小岛只安排一盏灯。完成它，也算今日营业成功。",
-    default: "今天小岛安排了 3 个任务：先启动身体，再完成主训练，最后用拉伸收尾。",
-    active: "今天状态不错，小岛给你安排了一条完整建设路线，主训练之后记得给身体一点放松时间。",
+    low_energy: "今天进入低能量模式，小岛只安排轻量维护任务。完成它，也算今日营业成功。",
+    default: "今天小岛优先按你的可用时间安排路线，任务数量不固定，能稳稳完成最重要。",
+    active: "今天状态不错，小岛会更偏向主训练和高质量建设，同时尽量贴近你留出的时间。",
     sweaty: "今天适合开一场小岛燃脂派对，但最后还是给你留了拉伸收尾，避免训练区过热。",
   };
 
@@ -314,9 +414,11 @@ function buildNotice(input: BuildRecommendationRouteInput, selectedVideos: Video
     return "视频库里的训练都已经在今日计划里啦，可以先完成现有路线。";
   }
 
-  const targetCount = targetCountForRoute(routeTypeForEnergy(input.todayStatus.energy));
-  if (selectedVideos.length < targetCount) {
-    return `匹配到的视频不够 ${targetCount} 个，小岛先安排 ${selectedVideos.length} 个可执行任务。`;
+  const routeType = routeTypeForEnergy(input.todayStatus.energy);
+  const targetMinutes = routeTargetMinutes(routeType, input.todayStatus.availableMinutes);
+  const totalDuration = selectedVideos.reduce((sum, video) => sum + durationOf(video), 0);
+  if (selectedVideos.length > 0 && Math.abs(totalDuration - targetMinutes) > 10) {
+    return `这次匹配到约 ${totalDuration} 分钟训练，小岛会优先贴近你的可用时间，但不会强行凑任务数量。`;
   }
 
   return "";
