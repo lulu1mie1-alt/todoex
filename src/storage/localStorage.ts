@@ -11,12 +11,21 @@ import {
   normalizeBodyPartOption,
 } from "../utils/tagOptions";
 
-const VIDEO_STORAGE_KEY = "fitnessIsland.videos";
-const CHECKIN_STORAGE_KEY = "fitnessIsland.checkinRecords";
-const SETTINGS_STORAGE_KEY = "fitnessIsland.settings";
-const CUSTOM_TAG_OPTIONS_KEY = "fitnessIsland.customTagOptions";
-const PLANS_STORAGE_KEY = "fitnessIsland.plans";
-const DEFAULT_VIDEOS_INITIALIZED_KEY = "fitnessIsland.defaultVideosInitialized";
+export const FITNESS_ISLAND_STORAGE_KEYS = {
+  videos: "fitnessIsland.videos",
+  checkinRecords: "fitnessIsland.checkinRecords",
+  settings: "fitnessIsland.settings",
+  customTagOptions: "fitnessIsland.customTagOptions",
+  plans: "fitnessIsland.plans",
+  defaultVideosInitialized: "fitnessIsland.defaultVideosInitialized",
+} as const;
+
+const VIDEO_STORAGE_KEY = FITNESS_ISLAND_STORAGE_KEYS.videos;
+const CHECKIN_STORAGE_KEY = FITNESS_ISLAND_STORAGE_KEYS.checkinRecords;
+const SETTINGS_STORAGE_KEY = FITNESS_ISLAND_STORAGE_KEYS.settings;
+const CUSTOM_TAG_OPTIONS_KEY = FITNESS_ISLAND_STORAGE_KEYS.customTagOptions;
+const PLANS_STORAGE_KEY = FITNESS_ISLAND_STORAGE_KEYS.plans;
+const DEFAULT_VIDEOS_INITIALIZED_KEY = FITNESS_ISLAND_STORAGE_KEYS.defaultVideosInitialized;
 
 export type CustomTagGroup = "bodyPart" | "intensity" | "equipment" | "trainingType" | "specialTags";
 
@@ -342,5 +351,5 @@ export function clearAllData() {
   localStorage.removeItem(SETTINGS_STORAGE_KEY);
   localStorage.removeItem(CUSTOM_TAG_OPTIONS_KEY);
   localStorage.removeItem(PLANS_STORAGE_KEY);
-  localStorage.removeItem(DEFAULT_VIDEOS_INITIALIZED_KEY);
+  localStorage.setItem(DEFAULT_VIDEOS_INITIALIZED_KEY, "true");
 }
